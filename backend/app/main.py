@@ -15,8 +15,9 @@ from typing import Any, Callable
 
 from fastapi import Body, FastAPI, File, Form, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
-from .config import Settings
+from .config import ROOT, Settings
 from .db import Database, now_ns
 from .worker import FrameWorker
 from .ws import ConnectionManager
@@ -238,6 +239,14 @@ def create_app(settings: Settings | None = None,
         finally:
             if hub is not None:
                 hub.disconnect(websocket)
+
+    # 前端静态资源（构建产物）。放在最后注册，API 路由优先匹配。
+    dist = ROOT / "frontend" / "dist"
+    if dist.exists():
+        app.mount("/", StaticFiles(directory=str(dist), html=True), name="frontend")
+        print(f"[backend] 前端已挂载: {dist}", flush=True)
+    else:
+        print("[backend] 未找到 frontend/dist，仅提供 API（先运行 npm run build）", flush=True)
 
     return app
 

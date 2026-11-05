@@ -1,0 +1,221 @@
+:root {
+  --risk-safe: #16a34a;
+  --risk-low: #ca8a04;
+  --risk-medium: #ea580c;
+  --risk-high: #dc2626;
+  --risk-unknown: #6b7280;
+  --surface: #ffffff;
+  --page: #f5f6f8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--page);
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei',
+    'Helvetica Neue', Arial, sans-serif;
+  color: #1f2937;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #111827;
+  color: #f9fafb;
+  padding: 0 24px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.brand .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15);
+}
+
+.nav {
+  border-bottom: none !important;
+  background: transparent !important;
+}
+
+.nav .el-menu-item {
+  color: #d1d5db !important;
+}
+
+.nav .el-menu-item.is-active {
+  color: #ffffff !important;
+  border-bottom-color: #22c55e !important;
+}
+
+.app-main {
+  padding: 20px 24px 8px;
+}
+
+.app-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+/* ---------- 实时页 ---------- */
+
+.hero {
+  border-radius: 14px;
+  padding: 26px 28px;
+  color: #ffffff;
+  margin-bottom: 16px;
+  transition: background 0.3s ease;
+}
+
+.hero.safe { background: linear-gradient(135deg, #15803d, #16a34a); }
+.hero.low { background: linear-gradient(135deg, #a16207, #ca8a04); }
+.hero.medium { background: linear-gradient(135deg, #c2410c, #ea580c); }
+.hero.high { background: linear-gradient(135deg, #991b1b, #dc2626); }
+.hero.unknown { background: linear-gradient(135deg, #374151, #6b7280); }
+
+.hero-label {
+  font-size: 13px;
+  opacity: 0.85;
+  letter-spacing: 0.08em;
+}
+
+.hero-value {
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1.15;
+  margin: 6px 0 4px;
+}
+
+.hero-sub {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.hero-note {
+  margin-top: 10px;
+  font-size: 13px;
+  opacity: 0.92;
+  max-width: 720px;
+  line-height: 1.5;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.big-value {
+  font-size: 26px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.pill.safe { background: var(--risk-safe); }
+.pill.low { background: var(--risk-low); }
+.pill.medium { background: var(--risk-medium); }
+.pill.high { background: var(--risk-high); }
+.pill.unknown { background: var(--risk-unknown); }
+
+/* ---------- 通用 ---------- */
+
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.live-badge .led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #9ca3af;
+}
+
+.live-badge.on .led {
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
+}
+
+.muted {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.event-row {
+  display: flex;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px dashed #e5e7eb;
+  font-size: 13px;
+}
+
+.event-row:last-child {
+  border-bottom: none;
+}
+
+.event-time {
+  color: #9ca3af;
+  font-variant-numeric: tabular-nums;
+  min-width: 62px;
+}
+
+.event-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #374151;
+}
+
+.disclaimer {
+  margin: 18px 0 8px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}

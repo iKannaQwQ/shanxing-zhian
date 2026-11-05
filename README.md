@@ -9,13 +9,13 @@
 |---|---|---|
 | P0 | 工程骨架、契约 schema、契约校验器、环境自检 | ✅ 完成 |
 | P1a | C++ 风险评估引擎 | ✅ 完成，46 项测试（见 [风险引擎](docs/04-risk-engine.md)） |
-| P1b | iOS ARKit 采集端 | 🟡 M1 已验证；M2-a 已真机确认；M2-b 已真机校验；M2–M5 已验证；M6 后端完成；M7 前端待做（见 [iOS 采集端](docs/05-ios-capture.md)） |
+| P1b | iOS ARKit 采集端 | 🟡 M1 已验证；M2-a 已真机确认；M2-b 已真机校验；M1–M6 已验证；前端已接入后端（待浏览器目视确认）（见 [iOS 采集端](docs/05-ios-capture.md)） |
 | P2 | 后端最小闭环 | ⬜ 未开始 |
 | P3 | 感知-深度几何 | ⬜ 未开始 |
 | P4 | 感知模块 M1–M7 | 🟡 代码完成、49 项测试通过，**模型未在沙盘验证**（见 [感知模块](docs/03-perception.md)） |
 | P5 | 融合 + 全链路 | ⬜ 未开始 |
 | P6 | 后端（FastAPI+SQLite+WS） | ✅ 完成，9 项测试（见 [后端](docs/07-backend.md)） |
-| P7 | 前端（用户页 + 管理后台） | ⬜ 未开始 |
+| P7 | 前端（实时页 + 管理后台） | ✅ 构建通过，**未做浏览器验证**（见 [前端](docs/08-frontend.md)） |
 | P8 | Windows 部署与实机验证 | ⬜ 未开始 |
 
 详细设计与阶段出口准则见 [docs/00-architecture.md](docs/00-architecture.md)。
