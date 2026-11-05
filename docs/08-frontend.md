@@ -1,8 +1,8 @@
 # 08 · 前端（Vue 3 + TypeScript + Element Plus）
 
 > **状态：按 M1–M9 分阶段重建中。**
-> 已完成：M1（工程结构）、M2（用户端首页）。
-> 管理后台的 5 个页面（M3–M6）尚未开始，旧的单页 AdminView 暂作占位。
+> 已完成：M1（工程结构）、M2（用户端首页）、M3（管理后台运行总览）。
+> M4 实时监控 / M5 事件与历史 / M6 设备管理尚未开始，侧边栏中标为「待开发」。
 >
 > 目录结构：
 > ```
@@ -11,7 +11,7 @@
 > ├── composables/  useStatusStream（WS）、useSystemStatus（轮询兜底）
 > ├── layouts/      UserLayout、AdminLayout
 > ├── views/user/   HomeView（M2）
-> └── views/        AdminView（占位，M3 起替换）
+> └── views/admin/  OverviewView（M3）
 > ```
 >
 > **枚举词表**：产品侧通行状态为 PASSABLE / PARTIALLY_BLOCKED / BLOCKED / UNKNOWN，

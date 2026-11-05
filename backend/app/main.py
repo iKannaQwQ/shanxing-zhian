@@ -163,6 +163,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         latest = db.latest_assessment()
         age_ms = (now_ns() - latest["ts_assessed_ns"]) / 1_000_000 if latest else None
         counters = db.counters()
+
+        # AI 推理 FPS：最近 10 秒完成的判定数 / 10
+        window_seconds = 10
+        recent = db.assessments_since(now_ns() - window_seconds * 1_000_000_000)
+        ai_fps = round(recent / window_seconds, 2)
+        ai_age_ms = round(age_ms) if age_ms is not None else None
+        pending = counters["queued"]
+        # 有积压却长时间没产出 -> worker 很可能挂了，而不是"空闲"
+        if pending > 0 and (ai_age_ms is None or ai_age_ms > 5000):
+            ai_state = "STALLED"
+        elif ai_age_ms is not None and ai_age_ms < 5000:
+            ai_state = "ONLINE"
+        else:
+            ai_state = "IDLE"
+
+        device_list = db.device_online(int(settings.device_offline_seconds * 1e9))
+
         return {
             "ready": True,
             "server_ns": now_ns(),
@@ -172,7 +189,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "stale_after_ms": int(settings.stale_after_seconds * 1000),
             "queue": {"depth": counters["queued"], "capacity": None},
             "counters": counters,
-            "devices": db.device_online(int(settings.device_offline_seconds * 1e9)),
+            "devices": device_list,
+            "ai_fps": ai_fps,
+            "system": {
+                "backend": "OK",
+                "ai_worker": ai_state,
+                "ai_last_result_ms": ai_age_ms,
+                "pending_frames": pending,
+                "devices_online": sum(1 for d in device_list if d.get("online")),
+                "devices_total": len(device_list),
+                "ws_clients": app.state.hub.client_count,
+                "frames_failed": counters["failed"],
+            },
             "db": db.stats(),
             "artifacts": app.state.store.disk_usage(),
             "ws_clients": app.state.hub.client_count,

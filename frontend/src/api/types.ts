@@ -73,6 +73,17 @@ export interface StatusPayload {
   artifacts?: { files: number; bytes: number }
   ws_clients: number
   last_processing_ms: number
+  ai_fps?: number
+  system?: {
+    backend: string
+    ai_worker: 'ONLINE' | 'IDLE' | 'STALLED'
+    ai_last_result_ms: number | null
+    pending_frames: number
+    devices_online: number
+    devices_total: number
+    ws_clients: number
+    frames_failed: number
+  }
 }
 
 /** WebSocket 推送的实时判定。 */

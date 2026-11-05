@@ -223,6 +223,13 @@ class Database:
             rows = self._conn.execute("SELECT frame_id FROM frames").fetchall()
         return [r["frame_id"] for r in rows]
 
+    def assessments_since(self, cutoff_ns: int) -> int:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT COUNT(*) AS c FROM assessments WHERE ts_assessed_ns >= ?",
+                (cutoff_ns,)).fetchone()
+        return int(row["c"])
+
     def counters(self) -> dict:
         with self._lock:
             rows = self._conn.execute(

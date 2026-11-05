@@ -157,8 +157,16 @@ GET /api/v1/status
  "devices":[{"device_id":"...","online":true,"silent_ms":120}],
  "db":{"frames":128,"assessments":128,"events":3},
  "artifacts":{"files":512,"bytes":47000000},
- "ws_clients":1,"last_processing_ms":0.4}
+ "ws_clients":1,"last_processing_ms":0.4,
+ "ai_fps":0.5,
+ "system":{"backend":"OK","ai_worker":"ONLINE","ai_last_result_ms":321,
+           "pending_frames":0,"devices_online":1,"devices_total":3,
+           "ws_clients":1,"frames_failed":1}}
 ```
+
+`ai_fps` = 最近 10 秒完成的判定数 / 10。
+`system.ai_worker`：`ONLINE`（5 秒内有结果）/ `IDLE`（无新数据）/
+`STALLED`（有积压却长时间无结果，通常是 worker 挂了）。
 
 `stale=true` 表示最新判定已经超过 `stale_after_ms`，**前端必须显式提示**，
 不能把旧数据当成实时路况。

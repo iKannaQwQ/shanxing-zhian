@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { frameImageURL } from '../../api/client'
 import { normalizeAlternative, normalizePassability, rowToMessage } from '../../api/mappers'
+import { worstPassability } from '../../api/verdict'
 import {
   ALTERNATIVE_TEXT, PASSABILITY_TEXT, RISK_TEXT,
   type AlternativeStatus, type Passability, type RiskLevel,
@@ -39,13 +40,8 @@ const passAToB = computed<Passability>(() =>
 const passBToA = computed<Passability>(() =>
   normalizePassability(current.value?.passability?.B_TO_A))
 
-/** UNKNOWN 视为最不利：任一方面未知，整体就不能声称可通行。 */
-const PASS_ORDER: Passability[] = ['PASSABLE', 'PARTIALLY_BLOCKED', 'BLOCKED', 'UNKNOWN']
-const overallPassability = computed<Passability>(() => {
-  const a = passAToB.value
-  const b = passBToA.value
-  return PASS_ORDER.indexOf(b) > PASS_ORDER.indexOf(a) ? b : a
-})
+const overallPassability = computed<Passability>(() =>
+  worstPassability(passAToB.value, passBToA.value))
 const overallPassText = computed(() => PASSABILITY_TEXT[overallPassability.value])
 
 const alternative = computed<AlternativeStatus>(
