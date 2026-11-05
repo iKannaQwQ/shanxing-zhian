@@ -2,6 +2,7 @@ import ARKit
 import Combine
 import CoreVideo
 import Foundation
+import UIKit
 
 /// M2-a：建立 ARSession 并**测量**真实的图像/深度格式。
 ///
@@ -13,6 +14,10 @@ final class ARSessionManager: NSObject, ObservableObject {
     @Published private(set) var isRunning = false
     @Published private(set) var statusText = "未开始"
     @Published private(set) var lastError: String?
+
+    /// M2-b：自转 RGB 预览与编码统计。编码在独立队列上进行，不阻塞 ARSession。
+    @Published private(set) var rgbPreview: UIImage?
+    @Published private(set) var encoderStats = EncoderStats()
 
     let session = ARSession()
 
@@ -27,6 +32,12 @@ final class ARSessionManager: NSObject, ObservableObject {
     private var lastPublish: TimeInterval = 0
     private var lastDepthSample: TimeInterval = 0
     private var depthStats: (ratio: Double, min: Float, max: Float)?
+
+    private let encoderQueue = DispatchQueue(label: "com.mountain.roadcapture.encoder",
+                                             qos: .userInitiated)
+    private let encodeLock = NSLock()
+    private var encodeInFlight = false
+    private var lastEncodeStart: TimeInterval = 0
 
     override init() {
         super.init()
@@ -57,6 +68,7 @@ final class ARSessionManager: NSObject, ObservableObject {
         currentFPS = 0
         lastPublish = 0
         lastDepthSample = 0
+        lastEncodeStart = 0
         depthStats = nil
 
         session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
@@ -78,6 +90,7 @@ final class ARSessionManager: NSObject, ObservableObject {
         DispatchQueue.main.async {
             self.isRunning = false
             self.facts = FrameFacts()
+            self.rgbPreview = nil
         }
         setStatus("已停止")
     }
@@ -107,6 +120,10 @@ final class ARSessionManager: NSObject, ObservableObject {
         } else {
             lines.append("Depth 采样: 未采样（格式非 float32）")
         }
+        lines.append("RGB 转码: \(String(format: "%.2f", encoderStats.convertMs)) ms  "
+                     + "JPEG编码: \(String(format: "%.2f", encoderStats.encodeMs)) ms  "
+                     + "体积: \(encoderStats.jpegBytes / 1024) KB")
+        if let err = encoderStats.error { lines.append("编码错误: \(err)") }
         if let err = lastError { lines.append("错误: \(err)") }
         return lines.joined(separator: "\n")
     }
@@ -115,6 +132,21 @@ final class ARSessionManager: NSObject, ObservableObject {
 
     private func setStatus(_ text: String) {
         DispatchQueue.main.async { self.statusText = text }
+    }
+
+    /// 尝试占用编码槽位；已有编码在进行时直接跳过，宁可少一帧也不排长队。
+    private func beginEncodeIfIdle() -> Bool {
+        encodeLock.lock()
+        defer { encodeLock.unlock() }
+        if encodeInFlight { return false }
+        encodeInFlight = true
+        return true
+    }
+
+    private func endEncode() {
+        encodeLock.lock()
+        encodeInFlight = false
+        encodeLock.unlock()
     }
 
     private func updateFPS(now: TimeInterval) {
@@ -246,6 +278,22 @@ extension ARSessionManager: ARSessionDelegate {
             DispatchQueue.main.async {
                 self.facts = snapshot
                 self.statusText = "采集中"
+            }
+        }
+
+        // M2-b：每 0.5 s 做一次真实的转换 + 编码，用于校验颜色与测量成本。
+        // 放在独立队列，不占用 ARSession 的 delegate 队列。
+        if frame.timestamp - lastEncodeStart >= 0.5, beginEncodeIfIdle() {
+            lastEncodeStart = frame.timestamp
+            // 连同 ARFrame 一起持有：ARKit 的像素缓冲生命周期绑定在 ARFrame 上，
+            // 只保留 CVPixelBuffer 在极端情况下可能遇到缓冲被回收。
+            encoderQueue.async { [weak self] in
+                let output = FrameEncoder.encode(frame.capturedImage)
+                DispatchQueue.main.async {
+                    self?.rgbPreview = output.image
+                    self?.encoderStats = output.stats
+                }
+                self?.endEncode()
             }
         }
     }

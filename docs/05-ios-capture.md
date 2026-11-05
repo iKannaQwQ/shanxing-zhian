@@ -202,7 +202,52 @@ M2 的第一步**不是**写编码和上传，而是把格式量出来。因为
 
 回答完这些，M2-b（YUV→RGB + JPEG）才有依据。
 
-## 8. 下一步（M2-b 及以后，尚未实施）
+## 8. M2-b：RGB 转码与编码（已实现，待真机目视校验）
+
+### 8.1 做了什么
+
+| 文件 | 职责 |
+|---|---|
+| `YUVConverter.swift` | vImage 显式转换 `420YpCbCr8BiPlanar → BGRA` |
+| `FrameEncoder.swift` | 转 CGImage / UIImage，并做 JPEG 编码，统计耗时与体积 |
+
+界面上把 **ARKit 自己渲染的画面** 与 **vImage 转出来的画面** 并排显示，
+颜色一致才算转码正确。
+
+### 8.2 三个关键实现点
+
+1. **显式使用 `bytesPerRow` 建 `vImage_Buffer`**，而不是假设行跨度等于宽度。
+   实测这台设备恰好无 padding（1920 / 1920 / 1024 / 256），但代码不能依赖这个巧合。
+2. **颜色矩阵与取值范围都不猜**：
+   - 取值范围由像素格式决定（`FullRange` vs `VideoRange`）；
+   - 矩阵优先读 CoreVideo 附件 `kCVImageBufferYCbCrMatrixKey`，读不到才回退 BT.709。
+3. **通道重排 `[3,2,1,0]`**：vImage 输出的是内存序 A,R,G,B；
+   CGImage 用 `byteOrder32Little + noneSkipFirst` 需要 B,G,R,A。
+
+### 8.3 不阻塞 ARSession
+
+编码放在独立串行队列 `com.mountain.roadcapture.encoder`，并且：
+- 每 0.5 s 才触发一次（M2-b 是校验阶段，不需要满帧率）；
+- 用 `NSLock` 保护的 `encodeInFlight` 做背压：上一帧还没编完就**直接跳过**，
+  宁可少一帧也不在队列里堆积；
+- 闭包同时持有 `ARFrame`：ARKit 的像素缓冲生命周期绑定在 ARFrame 上，
+  只保留 `CVPixelBuffer` 在极端情况下可能遇到缓冲被回收。
+
+### 8.4 要目视确认的两件事
+
+1. **颜色**：左右两张图的色调应基本一致。若左边正常、右边偏绿/偏紫，
+   说明矩阵或通道重排错了。
+2. **方向**：`capturedImage` 原生是 landscape-right，
+   竖屏下若显示为横躺，说明 `UIImage.Orientation` 选错，改 `.right` / `.up` 即可。
+
+这两项只能靠眼睛看，代码层面无法自证。
+
+### 8.5 未做
+
+- 编码结果**不落盘、不上传**，只用于测量与显示；
+- JPEG 的最终方向与命名（是否烘焙旋转）留给 M4 打包时决定。
+
+## 9. 下一步（M2-c 及以后，尚未实施）
 
 M2 要做 RGB + sceneDepth 同步采集，必须解决的几个问题：
 

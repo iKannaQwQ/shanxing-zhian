@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-/// M2-a：采集格式实测界面。
+/// M2-a + M2-b：采集格式实测 与 RGB 转码校验。
 ///
 /// 页面上每一个数字都是运行时从同一个 ARFrame 读出来的，
 /// 没有任何一个来自文档或猜测。
@@ -15,7 +15,7 @@ struct SessionView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                preview
+                comparisonStrip
                 factsList
             }
             .navigationTitle("采集实测")
@@ -44,44 +44,74 @@ struct SessionView: View {
         }
     }
 
-    // MARK: - 预览
+    // MARK: - 并排对比
 
-    private var preview: some View {
-        ZStack(alignment: .topLeading) {
-            if manager.isRunning {
-                ARPreviewView(session: manager.session)
-            } else {
-                Rectangle()
-                    .fill(Color.black)
-                    .overlay {
-                        VStack(spacing: 8) {
-                            Image(systemName: "camera.metering.unknown")
-                                .font(.largeTitle)
-                            Text(manager.statusText)
-                                .font(.footnote)
-                        }
-                        .foregroundStyle(.white.opacity(0.7))
-                    }
+    private var comparisonStrip: some View {
+        HStack(spacing: 6) {
+            tile(title: "ARKit 预览") {
+                if manager.isRunning {
+                    ARPreviewView(session: manager.session)
+                } else {
+                    placeholder(manager.statusText)
+                }
             }
-            statusBadge
+            tile(title: "自转 RGB") {
+                if let image = manager.rgbPreview {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                } else {
+                    placeholder(manager.isRunning ? "等待首帧…" : "未采集")
+                }
+            }
         }
-        .frame(height: 260)
+        .frame(height: 180)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(Color.black)
+        .overlay(alignment: .topLeading) { statusBadge }
+    }
+
+    private func tile<Content: View>(title: String,
+                                     @ViewBuilder content: () -> Content) -> some View {
+        ZStack {
+            Rectangle().fill(Color(white: 0.12))
+            content()
+        }
         .clipped()
+        .overlay(alignment: .bottomLeading) {
+            Text(title)
+                .font(.caption2)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2)
+                .background(.black.opacity(0.6), in: Capsule())
+                .foregroundStyle(.white)
+                .padding(4)
+        }
+    }
+
+    private func placeholder(_ text: String) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: "camera.metering.unknown").font(.title3)
+            Text(text).font(.caption2)
+        }
+        .foregroundStyle(.white.opacity(0.6))
     }
 
     private var statusBadge: some View {
         HStack(spacing: 6) {
             Circle()
                 .fill(manager.isRunning ? Color.green : Color.orange)
-                .frame(width: 8, height: 8)
+                .frame(width: 7, height: 7)
             Text("\(manager.statusText) · \(String(format: "%.1f", facts.fps)) fps")
                 .font(.caption2.monospaced())
                 .foregroundStyle(.white)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
         .background(.black.opacity(0.55), in: Capsule())
-        .padding(8)
+        .padding(10)
+        .opacity(0.9)
     }
 
     // MARK: - 数据
@@ -92,6 +122,21 @@ struct SessionView: View {
                 FactRow(label: "帧序号", value: "\(facts.frameIndex)")
                 FactRow(label: "跟踪状态", value: facts.tracking)
                 FactRow(label: "FPS", value: String(format: "%.1f", facts.fps))
+            }
+
+            Section {
+                FactRow(label: "YUV→BGRA", value: String(format: "%.2f ms", manager.encoderStats.convertMs))
+                FactRow(label: "JPEG 编码", value: String(format: "%.2f ms", manager.encoderStats.encodeMs))
+                FactRow(label: "JPEG 体积", value: manager.encoderStats.jpegBytes > 0
+                        ? "\(manager.encoderStats.jpegBytes / 1024) KB" : "-")
+                if let error = manager.encoderStats.error {
+                    FactRow(label: "错误", value: error)
+                }
+            } header: {
+                Text("RGB 转码（M2-b）")
+            } footer: {
+                Text("每 0.5 s 真实编码一次。左边是 ARKit 自己渲染的画面，右边是 vImage 转出来的结果——两者颜色应一致。")
+                    .font(.caption2)
             }
 
             Section("RGB · capturedImage") {
