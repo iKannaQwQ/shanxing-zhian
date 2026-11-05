@@ -15,9 +15,9 @@
 | Bundle ID | `com.mountain.roadcapture`（占位，需按你的开发者账号修改） |
 | 模拟器 SDK 编译 | ✅ 通过 |
 | 真机 SDK（arm64）编译 | ✅ 通过，无警告 |
-| **真机运行验证** | ❌ **未进行**（没有设备，且模拟器无 ARKit） |
+| **真机运行验证** | ✅ **通过**（iPhone 12 Pro Max / iOS 27.0.1，2026-11-05） |
 
-**没有在 iPhone 上跑过，所以不声称"M1 已通过"。** 编译通过 ≠ 功能验证。
+M1 已在真机上实际运行并确认全部能力项。实测输出见 §2.1。
 
 ---
 
@@ -58,6 +58,34 @@ ios/RockRoadCapture/
 - **不用 Bool 表示结论**：`ok / fail / warning / info` 四态，
   因为"未授权"和"不支持"必须区分——前者用户可解决，后者只能换设备。
 
+### 2.1 真机实测结果
+
+设备上「复制诊断信息」得到的原始输出：
+
+```
+MountainRoadCapture / M1 能力检查
+时间: 2026-11-05T13:08:49Z
+结论: 可以进入 M2
+---
+INFO 设备: iPhone 12 Pro Max（iPhone13,3）
+INFO 系统版本: Version 27.0.1 (Build 24A446)
+OK   ARKit 世界追踪: 支持
+OK   LiDAR 深度（sceneDepth）: 支持
+OK   平滑深度（smoothedSceneDepth）: 支持（可选）
+OK   相机权限: 已授权
+```
+
+| 事实 | 值 | 影响 |
+|---|---|---|
+| 设备 | iPhone 12 Pro Max | 与项目书写的 "12 Pro" 不同（`iPhone13,2` 才是 12 Pro），但同样带 LiDAR |
+| 系统 | **iOS 27.0.1** | 原计划按 iOS 26 评估；现在以 27.0.1 为准 |
+| sceneDepth | 支持 | M2 可按计划实现 |
+| smoothedSceneDepth | 支持 | 可在 M3 提供平滑预览选项 |
+| 相机权限 | 已授权 | 无需重复弹窗 |
+
+> 注意：`supportsFrameSemantics` 只回答"支持"，不回答"深度图多大、什么像素格式"。
+> 这些必须在 M2 运行时实际读取，不能照抄文档。
+
 ---
 
 ## 3. 在真机上运行
@@ -69,15 +97,15 @@ ios/RockRoadCapture/
 5. 运行后应看到 6 个检查项，全部为绿色时顶部横幅显示
    「可以进入 M2（RGB + 深度采集）」。
 
-预期结果（iPhone 12 Pro）：
+实测结果（2026-11-05，iPhone 12 Pro Max / iOS 27.0.1）：
 
 ```
-设备              iPhone 12 Pro（iPhone13,2）
-系统版本           iOS 26.x
+设备              iPhone 12 Pro Max（iPhone13,3）
+系统版本           Version 27.0.1 (Build 24A446)
 ARKit 世界追踪     支持
-LiDAR 深度        支持          <- 关键
+LiDAR 深度        支持          <- 关键，已确认
 平滑深度          支持
-相机权限          首次需申请
+相机权限          已授权
 ```
 
 如果 LiDAR 一栏是红色，说明这台机器不是 Pro 机型（非 Pro 的 iPhone 没有 LiDAR）。
@@ -107,8 +135,8 @@ MinimumOSVersion = 16.0
 CFBundleIdentifier = com.mountain.roadcapture
 ```
 
-**未执行**：真机安装、权限弹窗、ARKit 能力查询的实际返回值。
-因此本阶段的结论是"代码可编译、结构合理"，不是"功能已验证"。
+**已执行**：真机安装、权限授权、ARKit 能力查询并取得实际返回值（见 §2.1）。
+**仍未执行**：任何数据采集——M1 本身不采集，这是范围决定，不是遗漏。
 
 ---
 
@@ -126,8 +154,9 @@ Xcode 27 默认倾向 Swift 6 严格并发。M1 没有并发代码，但 M2 会�
 
 ## 6. M1 已知限制
 
-1. 没有单元测试。M1 的逻辑是"查询系统能力 → 展示"，唯一有效的测试是真机运行。
-2. 模拟器无法运行 ARKit，也不能装（本机未安装 iOS 模拟器运行时）。
+1. 没有单元测试。M1 的逻辑是"查询系统能力 → 展示"，唯一有效的测试是真机运行——
+   已于 2026-11-05 在 iPhone 12 Pro Max 上完成。
+2. 模拟器无法运行 ARKit，也不能装（本机未安装 iOS 模拟器运行时），故无模拟器回归。
 3. Bundle ID 与 Team 是占位值，真机安装前必须改。
 4. 未做本地网络权限声明（`NSLocalNetworkUsageDescription`）——那是 M5 上传阶段的事，
    提前声明会让用户看到一个当前用不到的系统弹窗。
