@@ -60,6 +60,9 @@ final class ARSessionManager: NSObject, ObservableObject {
     private let sessionQueue = DispatchQueue(label: "com.mountain.roadcapture.session")
     private let encoderQueue = DispatchQueue(label: "com.mountain.roadcapture.encoder",
                                              qos: .userInitiated)
+    /// 预览缩略图单独一条队列：绝不能在打包队列里做，否则会拖住下一次打包。
+    private let previewQueue = DispatchQueue(label: "com.mountain.roadcapture.preview",
+                                             qos: .utility)
     private let encodeLock = NSLock()
     private var encodeInFlight = false
 
@@ -459,13 +462,15 @@ extension ARSessionManager: ARSessionDelegate {
                         self.uploader.enqueue(bundle)
                     }
                 }
-                // 预览每 5 帧刷新一次（2 Hz），避免 SwiftUI 过度重绘。
-                if frameSnapshot.sequence % 5 == 0, let image = output.image {
-                    let thumbnail = UIImage(cgImage: image)
-                        .preparingThumbnail(of: CGSize(width: 640, height: 480))
-                    DispatchQueue.main.async {
-                        self.rgbPreview = thumbnail
-                        self.encoderStats = output.stats
+                // 预览每 10 帧刷新一次（1 Hz）。缩略图放到独立队列，
+                // 打包队列立即释放，不拖慢下一次打包。
+                if frameSnapshot.sequence % 10 == 0, let image = output.image {
+                    self.previewQueue.async { [weak self] in
+                        let thumb = ImageDownscale.thumbnail(image, maxWidth: 640)
+                        DispatchQueue.main.async {
+                            self?.rgbPreview = thumb.map { UIImage(cgImage: $0) }
+                            self?.encoderStats = output.stats
+                        }
                     }
                 }
                 self.endEncode()

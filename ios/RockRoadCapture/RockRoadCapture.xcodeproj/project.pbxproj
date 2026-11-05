@@ -32,6 +32,7 @@
 		AA00000000000000000000F3 /* FrameUploader.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000F0 /* FrameUploader.swift */; };
 		AA00000000000000000000FA /* RiskSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000FB /* RiskSnapshot.swift */; };
 		AA00000000000000000000FC /* StatusStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000FD /* StatusStream.swift */; };
+		AA0000000000000000000101 /* ImageDownscale.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000102 /* ImageDownscale.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -62,6 +63,7 @@
 		AA00000000000000000000F0 /* FrameUploader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameUploader.swift; sourceTree = "<group>"; };
 		AA00000000000000000000FB /* RiskSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RiskSnapshot.swift; sourceTree = "<group>"; };
 		AA00000000000000000000FD /* StatusStream.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusStream.swift; sourceTree = "<group>"; };
+		AA0000000000000000000102 /* ImageDownscale.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageDownscale.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -136,6 +138,7 @@
 				AA00000000000000000000F0 /* FrameUploader.swift */,
 				AA00000000000000000000FB /* RiskSnapshot.swift */,
 				AA00000000000000000000FD /* StatusStream.swift */,
+				AA0000000000000000000102 /* ImageDownscale.swift */,
 			);
 			path = Capture;
 			sourceTree = "<group>";
@@ -233,6 +236,7 @@
 				AA00000000000000000000F3 /* FrameUploader.swift in Sources */,
 				AA00000000000000000000FA /* RiskSnapshot.swift in Sources */,
 				AA00000000000000000000FC /* StatusStream.swift in Sources */,
+				AA0000000000000000000101 /* ImageDownscale.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
