@@ -72,6 +72,11 @@ final class ARSessionManager: NSObject, ObservableObject {
     private var depthBytes = 0
     private var confidenceBytes = 0
 
+    /// RGB 转码/编码只服务于**预览与成本测量**，不需要跟采集同频。
+    /// 与采集率解耦：10 fps 采集 + 2 fps 预览。
+    private let previewInterval: TimeInterval = 0.5
+    private var lastEncodeStart: TimeInterval = 0
+
     private var startedAt: TimeInterval = 0
     private var lastPublish: TimeInterval = 0
     private var lastStatusPublish: TimeInterval = 0
@@ -117,6 +122,7 @@ final class ARSessionManager: NSObject, ObservableObject {
         confidenceBytes = 0
         lastPublish = 0
         lastStatusPublish = 0
+        lastEncodeStart = 0
         startedAt = CACurrentMediaTime()
         MemoryProbe.resetPeak()
 
@@ -293,12 +299,17 @@ extension ARSessionManager: ARSessionDelegate {
                                             pixelFormat: depthCopy.pixelFormat)
         }
 
-        // --- RGB 编码（独立队列）---
-        if beginEncodeIfIdle() {
+        // --- RGB 编码（独立队列；按预览频率节流，不跟采集同频）---
+        let previewDue = frame.timestamp - lastEncodeStart >= previewInterval
+        if previewDue, beginEncodeIfIdle() {
+            lastEncodeStart = frame.timestamp
             encoderQueue.async { [weak self] in
                 let output = FrameEncoder.encode(frame.capturedImage)
+                // 只保留缩略图：整幅 1920x1440 BGRA 是 11 MB，
+                // 长期持有会让常驻内存被预览图吃掉。
+                let thumbnail = output.image?.preparingThumbnail(of: CGSize(width: 640, height: 480))
                 DispatchQueue.main.async {
-                    self?.rgbPreview = output.image
+                    self?.rgbPreview = thumbnail ?? output.image
                     self?.encoderStats = output.stats
                 }
                 self?.endEncode()
