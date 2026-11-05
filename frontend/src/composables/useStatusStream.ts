@@ -9,6 +9,8 @@ export function useStatusStream() {
   const last = ref<AssessmentMessage | null>(null)
   const received = ref(0)
   const lastAt = ref<Date | null>(null)
+  /** 最近一条**实时**推送的时刻；历史快照不会更新它 */
+  const lastLiveAt = ref<number | null>(null)
   const error = ref<string | null>(null)
 
   let socket: WebSocket | null = null
@@ -34,6 +36,7 @@ export function useStatusStream() {
           last.value = data as AssessmentMessage
           received.value += 1
           lastAt.value = new Date()
+          lastLiveAt.value = Date.now()
         } else if (data.type === 'snapshot') {
           // 快照是补发的历史值，只用于首屏兜底，不算“实时收到”
           if (data.latest) {
@@ -72,5 +75,5 @@ export function useStatusStream() {
     socket?.close()
   })
 
-  return { connected, last, received, lastAt, error }
+  return { connected, last, received, lastAt, lastLiveAt, error }
 }

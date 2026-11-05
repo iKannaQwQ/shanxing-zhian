@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { frameImageURL } from '../../api/client'
 import { normalizeAlternative, normalizePassability, rowToMessage } from '../../api/mappers'
 import {
@@ -9,14 +9,20 @@ import {
 import { useStatusStream } from '../../composables/useStatusStream'
 import { useSystemStatus } from '../../composables/useSystemStatus'
 
-const { connected, last, received, lastAt, error: wsError } = useStatusStream()
-const { status, error: statusError } = useSystemStatus(3000)
+const { connected, last, received, lastLiveAt, error: wsError } = useStatusStream()
+const { status, error: statusError, fetchedAt } = useSystemStatus(3000)
 
-/** 收到实时推送的时刻，用于把「服务端的过期标记」和「刚刚推来的新数据」区分开。 */
-const freshAt = ref<number | null>(null)
-watch(last, () => {
-  freshAt.value = Date.now()
-})
+const BUILD_TAG = 'web m2.2'
+
+/**
+ * 每秒自增的时钟。
+ * 过期是**时间函数**，不能用「轮询返回的布尔值」直接显示——
+ * 那样最长会晚 3 秒才更新，而且依赖 computed 恰好被重新求值。
+ */
+const now = ref(Date.now())
+let ticker: number | null = null
+onMounted(() => { ticker = window.setInterval(() => { now.value = Date.now() }, 1000) })
+onUnmounted(() => { if (ticker !== null) window.clearInterval(ticker) })
 
 const current = computed(() => {
   if (last.value) return last.value
@@ -62,18 +68,29 @@ const rockWarning = computed(() => {
   return { text: '未发现落石', detail: '仅在本次观测范围内有效', tone: 'safe' }
 })
 
-const stale = computed(() => {
-  if (freshAt.value !== null && Date.now() - freshAt.value < 6000) return false
-  return Boolean(status.value?.stale)
+const STALE_MS = computed(() => status.value?.stale_after_ms ?? 5000)
+
+/**
+ * 数据年龄（毫秒）。全部用**客户端相对时间**计算，不比较两端的绝对时钟。
+ * - 有实时推送：从收到那一刻算起；
+ * - 只有历史快照：服务端给的 age_ms + 拉取后经过的时间。
+ */
+const ageMs = computed(() => {
+  if (lastLiveAt.value !== null) return Math.max(0, now.value - lastLiveAt.value)
+  const base = status.value?.age_ms
+  if (base == null) return null
+  const fetched = fetchedAt.value?.getTime() ?? now.value
+  return base + Math.max(0, now.value - fetched)
 })
 
+const stale = computed(() => ageMs.value != null && ageMs.value > STALE_MS.value)
+
 const ageText = computed(() => {
-  if (freshAt.value !== null) {
-    const seconds = Math.max(0, (Date.now() - freshAt.value) / 1000)
-    return `${seconds.toFixed(0)} 秒前收到`
-  }
-  const age = status.value?.age_ms
-  return age == null ? '—' : `${(age / 1000).toFixed(1)} 秒前`
+  const ms = ageMs.value
+  if (ms == null) return '—'
+  if (ms < 1000) return '刚刚'
+  if (ms < 60_000) return `${(ms / 1000).toFixed(0)} 秒前`
+  return `${(ms / 60_000).toFixed(1)} 分钟前`
 })
 
 const isDemo = computed(() => status.value?.latest?.source === 'SIMULATED')
@@ -113,7 +130,7 @@ const note = computed(() => riskNote[risk.value] ?? '')
         <span v-else-if="status" class="muted">离线，显示最近一次结果</span>
         <span v-else class="muted">正在连接…</span>
       </div>
-      <div class="stamp mono">更新 {{ updatedAt }}</div>
+      <div class="stamp mono">更新 {{ updatedAt }} · {{ ageText }}</div>
     </div>
 
     <el-alert
@@ -147,6 +164,8 @@ const note = computed(() => riskNote[risk.value] ?? '')
       description="页面会自动重连；期间结果来自轮询。"
       style="margin-bottom: 12px"
     />
+
+    <div class="build mono">{{ BUILD_TAG }}</div>
 
     <!-- 总体状态 -->
     <section class="hero" :class="riskClass">
@@ -240,6 +259,7 @@ const note = computed(() => riskNote[risk.value] ?? '')
 
 .stamp { color: var(--muted); }
 .muted { color: var(--muted); }
+.build { font-size: 10px; color: #9ca3af; text-align: right; margin-top: -6px; }
 
 /* 总体状态 */
 .hero {
