@@ -105,3 +105,31 @@ def test_curved_road_supported():
     # 上部应只识别到左侧支路宽度，而不是整幅宽
     top = [p for p in prof if p["y"] < 200 and p["width_px"] > 0]
     assert top and all(p["width_px"] <= 150 for p in top)
+
+
+# ---------- 设备朝向 → 旋转 ----------
+
+def test_orientation_rotation_mapping():
+    from perception.road.orientation import inverse, rotation_cw
+
+    assert rotation_cw("landscape_right") == 0
+    assert rotation_cw("landscape_left") == 180
+    assert rotation_cw("portrait") == 90
+    assert rotation_cw("portrait_upside_down") == 270
+    assert rotation_cw(None) == 0
+    assert rotation_cw("unknown_value") == 0
+
+
+def test_orientation_inverse():
+    from perception.road.orientation import inverse, rotation_cw
+
+    for name in ("landscape_right", "landscape_left", "portrait", "portrait_upside_down"):
+        r = rotation_cw(name)
+        assert (r + inverse(r)) % 360 == 0
+
+
+def test_portrait_needs_rotation():
+    """竖持时必须旋转，否则道路横躺。"""
+    from perception.road.orientation import rotation_cw
+
+    assert rotation_cw("portrait") != 0

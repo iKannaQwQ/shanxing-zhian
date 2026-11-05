@@ -36,6 +36,8 @@ struct FrameSnapshot {
     var intrinsics: FrameIntrinsics
     var pose: [Double]
     var trackingState: String
+    /// 设备界面朝向；capturedImage 恒为 landscape_right，下游据此转正
+    var deviceOrientation: String
 }
 
 /// 一帧的完整打包结果（M4）。
@@ -71,6 +73,7 @@ struct FrameBundle {
                 "format": "jpeg",
                 "jpeg_quality": jpegQuality,
                 "orientation": "landscape_right",
+                "device_orientation": snapshot.deviceOrientation,
             ],
             "intrinsics": [
                 "fx": snapshot.intrinsics.fx,

@@ -299,6 +299,7 @@ final class ARSessionManager: NSObject, ObservableObject {
         lines.append("服务器: \(UploadSettings.shared.ingestURL?.absoluteString ?? "未配置")")
         lines.append("状态流: \(streamState)   \(UploadSettings.shared.wsURL?.absoluteString ?? "-")")
         let r = lastRiskResult
+        lines.append("界面朝向: \(Self.interfaceOrientationName())")
         lines.append("端到端风险: \(r.overallRisk) / \(r.systemStatus)   双向: \(r.passAToB)·\(r.passBToA)   "
                      + "替代: \(r.alternative)   处理 \(String(format: "%.0f", r.processingMs)) ms")
         lines.append("已发送: \(u.sent)   失败: \(u.failed)   队列: \(u.queued)/\(u.capacity)   "
@@ -331,7 +332,8 @@ final class ARSessionManager: NSObject, ObservableObject {
                              tsCaptureNs: sessionEpochNs + Int64(frame.timestamp * 1_000_000_000),
                              intrinsics: intrinsics,
                              pose: Self.matrixArray(frame.camera.transform),
-                             trackingState: Self.trackingStateName(frame.camera.trackingState))
+                             trackingState: Self.trackingStateName(frame.camera.trackingState),
+                             deviceOrientation: Self.interfaceOrientationName())
     }
 
     /// simd_float4x4 是列主序，契约要求 16 个数的列主序数组。
@@ -341,6 +343,19 @@ final class ARSessionManager: NSObject, ObservableObject {
                 c.1.x, c.1.y, c.1.z, c.1.w,
                 c.2.x, c.2.y, c.2.z, c.2.w,
                 c.3.x, c.3.y, c.3.z, c.3.w].map { Double($0) }
+    }
+
+    /// 当前界面朝向。capturedImage 不随设备旋转，所以这个值决定下游要不要把图像转正。
+    private static func interfaceOrientationName() -> String {
+        let orientation = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?
+            .interfaceOrientation
+        switch orientation {
+        case .portrait: return "portrait"
+        case .portraitUpsideDown: return "portrait_upside_down"
+        case .landscapeLeft: return "landscape_left"
+        case .landscapeRight: return "landscape_right"
+        default: return "landscape_right"
+        }
     }
 
     private static func trackingStateName(_ state: ARCamera.TrackingState) -> String {

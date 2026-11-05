@@ -38,6 +38,10 @@
 | 无效值 | `0`（或 `depth.invalid_value`）。**无效 ≠ 很近**，任何代码不得把 0 当有效深度 |
 | 对齐 | `depth.aligned_to_rgb` 必须由采集端**实测填写**，不允许默认 true |
 | 单位 | 统一米制；像素→米由 `scale_factor` 完成 |
+> **朝向约定**：`capture.orientation` 恒为 `landscape_right`（ARKit 原生缓冲），
+> 另由 `capture.device_orientation` 记录采集时的界面朝向。
+> 下游据此把图像转正后再送模型——**不把旋转烘焙进像素数据**。
+
 | 置信度 | **`ARConfidenceLevel`：0=低 1=中 2=高**（实测 iPhone 12 Pro Max / iOS 27.0.1，`OneComponent8`）。不是 0–255，按 255 归一会把高置信度判成 0.008 |
 
 `quality.depth_aligned_ok=false` 时，风险引擎必须拒绝一切米制结论（规则 R2/P5）。

@@ -24,6 +24,7 @@ if str(PERCEPTION_SRC) not in sys.path:
 
 from perception.depth.frame import Intrinsics, decode_depth  # noqa: E402
 from perception.pipeline import FrameInput, PerceptionPipeline  # noqa: E402
+from perception.road.orientation import rotation_cw  # noqa: E402
 
 
 class RiskEngine:
@@ -135,9 +136,14 @@ class InferencePipeline:
     def process_bundle(self, metadata: dict, rgb_bytes: bytes, depth_bytes: bytes,
                        confidence_bytes: bytes | None) -> dict[str, Any]:
         t0 = time.perf_counter()
+        device_orientation = metadata.get("capture", {}).get("device_orientation")
         rgb, depth, confidence, intrinsics = decode_bundle(
             metadata, rgb_bytes, depth_bytes, confidence_bytes)
         decode_ms = (time.perf_counter() - t0) * 1000
+
+        # 设备竖持时 capturedImage 里的道路是横躺的，必须先转正再推理
+        rotation = rotation_cw(device_orientation)
+        self.segmenter.rotation_cw = rotation
 
         t1 = time.perf_counter()
         report = self.pipeline.process(FrameInput(
