@@ -7,10 +7,20 @@
 
 ## 怎么跑
 
+**双击即可**（项目根目录）：
+
+| 文件 | 作用 |
+|---|---|
+| `启动系统.command` | 启动服务并打开浏览器 |
+| `停止系统.command` | 停止全部服务 |
+| `查看状态.command` | 查看当前状态 |
+
+或者用命令行：
+
 ```bash
-bash scripts/start_all.sh     # 一键启动（后端 + AI worker）
-bash scripts/status.sh        # 看当前状态
-bash scripts/stop_all.sh      # 一键停止
+bash scripts/start_all.sh     # 启动（后端 + AI worker）
+bash scripts/status.sh        # 看状态
+bash scripts/stop_all.sh      # 停止
 ```
 
 完整步骤（手机端、排障、数据清理）：**[运行手册](docs/13-runbook.md)**
