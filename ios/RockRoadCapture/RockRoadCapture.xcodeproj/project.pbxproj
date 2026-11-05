@@ -19,6 +19,9 @@
 		AA00000000000000000000CA /* SessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000B8 /* SessionView.swift */; };
 		AA00000000000000000000CB /* YUVConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000B9 /* YUVConverter.swift */; };
 		AA00000000000000000000CC /* FrameEncoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000BA /* FrameEncoder.swift */; };
+		AA00000000000000000000CD /* MemoryProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000BB /* MemoryProbe.swift */; };
+		AA00000000000000000000CE /* DepthSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000BC /* DepthSampler.swift */; };
+		AA00000000000000000000CF /* CaptureStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000BD /* CaptureStats.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -35,6 +38,9 @@
 		AA00000000000000000000B8 /* SessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionView.swift; sourceTree = "<group>"; };
 		AA00000000000000000000B9 /* YUVConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YUVConverter.swift; sourceTree = "<group>"; };
 		AA00000000000000000000BA /* FrameEncoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameEncoder.swift; sourceTree = "<group>"; };
+		AA00000000000000000000BB /* MemoryProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryProbe.swift; sourceTree = "<group>"; };
+		AA00000000000000000000BC /* DepthSampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepthSampler.swift; sourceTree = "<group>"; };
+		AA00000000000000000000BD /* CaptureStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureStats.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -95,6 +101,9 @@
 				AA00000000000000000000B8 /* SessionView.swift */,
 				AA00000000000000000000B9 /* YUVConverter.swift */,
 				AA00000000000000000000BA /* FrameEncoder.swift */,
+				AA00000000000000000000BB /* MemoryProbe.swift */,
+				AA00000000000000000000BC /* DepthSampler.swift */,
+				AA00000000000000000000BD /* CaptureStats.swift */,
 			);
 			path = Capture;
 			sourceTree = "<group>";
@@ -179,6 +188,9 @@
 				AA00000000000000000000CA /* SessionView.swift in Sources */,
 				AA00000000000000000000CB /* YUVConverter.swift in Sources */,
 				AA00000000000000000000CC /* FrameEncoder.swift in Sources */,
+				AA00000000000000000000CD /* MemoryProbe.swift in Sources */,
+				AA00000000000000000000CE /* DepthSampler.swift in Sources */,
+				AA00000000000000000000CF /* CaptureStats.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

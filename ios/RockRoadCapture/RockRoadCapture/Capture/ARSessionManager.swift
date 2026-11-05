@@ -4,10 +4,12 @@ import CoreVideo
 import Foundation
 import UIKit
 
-/// M2-a：建立 ARSession 并**测量**真实的图像/深度格式。
+/// M2：ARKit 采集。
 ///
-/// 本阶段刻意不做：YUV 转 RGB、JPEG 编码、深度拷贝、网络上传。
-/// 先把"到底是什么格式、多大分辨率"测量出来，再决定后续实现。
+/// 阶段划分：
+///   * M2-a 把真实格式量出来（分辨率/像素格式/bytesPerRow/内参）
+///   * M2-b 打通 RGB 转码与 JPEG 编码
+///   * M2-c 节流到目标帧率、原始拷贝深度与置信度、观测资源占用
 final class ARSessionManager: NSObject, ObservableObject {
 
     @Published private(set) var facts = FrameFacts()
@@ -15,34 +17,66 @@ final class ARSessionManager: NSObject, ObservableObject {
     @Published private(set) var statusText = "未开始"
     @Published private(set) var lastError: String?
 
-    /// M2-b：自转 RGB 预览与编码统计。编码在独立队列上进行，不阻塞 ARSession。
+    /// M2-b：自转 RGB 预览与编码统计。
     @Published private(set) var rgbPreview: UIImage?
     @Published private(set) var encoderStats = EncoderStats()
+
+    /// M2-c：节流与资源占用。
+    @Published private(set) var captureStats = CaptureStats()
 
     let session = ARSession()
 
     /// 只有支持 sceneDepth 的设备才允许开始采集（M1 已确认本项目设备支持）。
     let isDepthSupported = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
 
-    private let sessionQueue = DispatchQueue(label: "com.mountain.roadcapture.session")
-    private var frameIndex = 0
-    private var fpsWindowStart: TimeInterval = 0
-    private var fpsWindowFrames = 0
-    private var currentFPS: Double = 0
-    private var lastPublish: TimeInterval = 0
-    private var lastDepthSample: TimeInterval = 0
-    private var depthStats: (ratio: Double, min: Float, max: Float)?
+    /// 目标采集帧率。ARKit 原生 30 fps，这里按时间间隔抽帧。
+    var targetFPS: Int = 10 {
+        didSet {
+            if targetFPS <= 0 { targetFPS = 1 }
+            captureInterval = 1.0 / Double(targetFPS)
+        }
+    }
 
+    private let sessionQueue = DispatchQueue(label: "com.mountain.roadcapture.session")
     private let encoderQueue = DispatchQueue(label: "com.mountain.roadcapture.encoder",
                                              qos: .userInitiated)
     private let encodeLock = NSLock()
     private var encodeInFlight = false
-    private var lastEncodeStart: TimeInterval = 0
+
+    private var captureInterval: TimeInterval = 0.1
+
+    // 原生帧率统计
+    private var frameIndex = 0
+    private var nativeWindowStart: TimeInterval = 0
+    private var nativeWindowFrames = 0
+    private var nativeFPS: Double = 0
+
+    // 采集帧率统计
+    private var captureWindowStart: TimeInterval = 0
+    private var captureWindowCount = 0
+    private var captureFPS: Double = 0
+
+    // 节流
+    private var lastCaptureTimestamp: TimeInterval = 0
+    private var produced = 0
+    private var skippedByThrottle = 0
+    private var droppedEncoderBusy = 0
+
+    // 拷贝
+    private var depthCopyMs: Double = 0
+    private var confidenceCopyMs: Double = 0
+    private var depthBytes = 0
+    private var confidenceBytes = 0
+
+    private var startedAt: TimeInterval = 0
+    private var lastPublish: TimeInterval = 0
+    private var lastStatusPublish: TimeInterval = 0
 
     override init() {
         super.init()
         session.delegateQueue = sessionQueue
         session.delegate = self
+        captureInterval = 1.0 / Double(targetFPS)
     }
 
     // MARK: - 控制
@@ -63,13 +97,24 @@ final class ARSessionManager: NSObject, ObservableObject {
         configuration.frameSemantics.insert(.sceneDepth)
 
         frameIndex = 0
-        fpsWindowStart = 0
-        fpsWindowFrames = 0
-        currentFPS = 0
+        nativeWindowStart = 0
+        nativeWindowFrames = 0
+        nativeFPS = 0
+        captureWindowStart = 0
+        captureWindowCount = 0
+        captureFPS = 0
+        lastCaptureTimestamp = 0
+        produced = 0
+        skippedByThrottle = 0
+        droppedEncoderBusy = 0
+        depthCopyMs = 0
+        confidenceCopyMs = 0
+        depthBytes = 0
+        confidenceBytes = 0
         lastPublish = 0
-        lastDepthSample = 0
-        lastEncodeStart = 0
-        depthStats = nil
+        lastStatusPublish = 0
+        startedAt = CACurrentMediaTime()
+        MemoryProbe.resetPeak()
 
         session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
         DispatchQueue.main.async {
@@ -99,12 +144,13 @@ final class ARSessionManager: NSObject, ObservableObject {
 
     func diagnosticText() -> String {
         let f = facts
+        let c = captureStats
         var lines: [String] = []
-        lines.append("MountainRoadCapture / M2-a 采集格式实测")
+        lines.append("MountainRoadCapture / M2 采集实测")
         lines.append("时间: \(ISO8601DateFormatter().string(from: Date()))")
         lines.append("状态: \(statusText)")
         lines.append("---")
-        lines.append("帧序号: \(f.frameIndex)   跟踪: \(f.tracking)   FPS: \(String(format: "%.1f", f.fps))")
+        lines.append("帧序号: \(f.frameIndex)   跟踪: \(f.tracking)   原生FPS: \(String(format: "%.1f", f.fps))")
         lines.append("RGB: \(f.rgbWidth)x\(f.rgbHeight)  \(f.rgbFormat)  planes=\(f.rgbPlaneCount)  bpr=\(f.rgbBytesPerRow)")
         lines.append("Depth: \(f.depthWidth)x\(f.depthHeight)  \(f.depthFormat)  bpr=\(f.depthBytesPerRow)")
         lines.append("Confidence: \(f.confidenceWidth)x\(f.confidenceHeight)  \(f.confidenceFormat)  bpr=\(f.confidenceBytesPerRow)")
@@ -115,14 +161,22 @@ final class ARSessionManager: NSObject, ObservableObject {
                      + "y=\(String(format: "%.4f", f.depthScaleY)) "
                      + "宽高比一致=\(f.aspectMatches ? "是" : "否")")
         if let ratio = f.depthValidRatio, let mn = f.depthMin, let mx = f.depthMax {
-            lines.append("Depth 采样: 有效=\(String(format: "%.1f%%", ratio * 100)) "
+            lines.append("Depth 采样(来自拷贝): 有效=\(String(format: "%.1f%%", ratio * 100)) "
                          + "范围=\(String(format: "%.3f", mn))~\(String(format: "%.3f", mx)) m")
         } else {
-            lines.append("Depth 采样: 未采样（格式非 float32）")
+            lines.append("Depth 采样: 未采样")
         }
         lines.append("RGB 转码: \(String(format: "%.2f", encoderStats.convertMs)) ms  "
                      + "JPEG编码: \(String(format: "%.2f", encoderStats.encodeMs)) ms  "
                      + "体积: \(encoderStats.jpegBytes / 1024) KB")
+        lines.append("--- 采集节流 ---")
+        lines.append("目标FPS: \(c.targetFPS)   实测采集FPS: \(String(format: "%.1f", c.captureFPS))   "
+                     + "已产出: \(c.produced)   节流跳过: \(c.skippedByThrottle)   "
+                     + "编码繁忙丢帧: \(c.droppedEncoderBusy)")
+        lines.append("深度拷贝: \(String(format: "%.3f", c.depthCopyMs)) ms  \(c.depthBytes / 1024) KB   "
+                     + "置信度拷贝: \(String(format: "%.3f", c.confidenceCopyMs)) ms  \(c.confidenceBytes / 1024) KB")
+        lines.append("内存: 常驻 \(String(format: "%.1f", c.residentMB)) MB   峰值 \(String(format: "%.1f", c.peakResidentMB)) MB   "
+                     + "运行 \(String(format: "%.0f", c.elapsedSeconds)) s")
         if let err = encoderStats.error { lines.append("编码错误: \(err)") }
         if let err = lastError { lines.append("错误: \(err)") }
         return lines.joined(separator: "\n")
@@ -134,7 +188,28 @@ final class ARSessionManager: NSObject, ObservableObject {
         DispatchQueue.main.async { self.statusText = text }
     }
 
-    /// 尝试占用编码槽位；已有编码在进行时直接跳过，宁可少一帧也不排长队。
+    private func updateNativeFPS(now: TimeInterval) {
+        if nativeWindowStart == 0 { nativeWindowStart = now; nativeWindowFrames = 0 }
+        nativeWindowFrames += 1
+        let elapsed = now - nativeWindowStart
+        if elapsed >= 1.0 {
+            nativeFPS = Double(nativeWindowFrames) / elapsed
+            nativeWindowStart = now
+            nativeWindowFrames = 0
+        }
+    }
+
+    private func updateCaptureFPS(now: TimeInterval) {
+        if captureWindowStart == 0 { captureWindowStart = now; captureWindowCount = 0 }
+        captureWindowCount += 1
+        let elapsed = now - captureWindowStart
+        if elapsed >= 1.0 {
+            captureFPS = Double(captureWindowCount) / elapsed
+            captureWindowStart = now
+            captureWindowCount = 0
+        }
+    }
+
     private func beginEncodeIfIdle() -> Bool {
         encodeLock.lock()
         defer { encodeLock.unlock() }
@@ -149,62 +224,30 @@ final class ARSessionManager: NSObject, ObservableObject {
         encodeLock.unlock()
     }
 
-    private func updateFPS(now: TimeInterval) {
-        if fpsWindowStart == 0 {
-            fpsWindowStart = now
-            fpsWindowFrames = 0
-        }
-        fpsWindowFrames += 1
-        let elapsed = now - fpsWindowStart
-        if elapsed >= 1.0 {
-            currentFPS = Double(fpsWindowFrames) / elapsed
-            fpsWindowStart = now
-            fpsWindowFrames = 0
-        }
+    /// 一个平面的原始拷贝，**保留原始 bytesPerRow**（含可能的 padding）。
+    private struct PlaneCopy {
+        var data: Data
+        var width: Int
+        var height: Int
+        var bytesPerRow: Int
+        var pixelFormat: OSType
     }
 
-    /// 只在 float32 格式下采样；其他格式直接返回 nil，绝不假设内存布局。
-    private static func sampleDepth(_ buffer: CVPixelBuffer) -> (Double, Float, Float)? {
-        let format = CVPixelBufferGetPixelFormatType(buffer)
-        guard format == kCVPixelFormatType_DepthFloat32
-                || format == kCVPixelFormatType_DisparityFloat32 else {
-            return nil
-        }
+    private static func copyPlane(_ buffer: CVPixelBuffer, plane: Int) -> PlaneCopy? {
         guard CVPixelBufferLockBaseAddress(buffer, .readOnly) == kCVReturnSuccess else {
             return nil
         }
         defer { CVPixelBufferUnlockBaseAddress(buffer, .readOnly) }
-        guard let base = CVPixelBufferGetBaseAddress(buffer) else { return nil }
-
-        let width = CVPixelBufferGetWidth(buffer)
-        let height = CVPixelBufferGetHeight(buffer)
-        let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
-        let floatsPerRow = bytesPerRow / MemoryLayout<Float32>.size
-        let pointer = base.assumingMemoryBound(to: Float32.self)
-
-        var valid = 0
-        var total = 0
-        var minValue = Float.greatestFiniteMagnitude
-        var maxValue = -Float.greatestFiniteMagnitude
-
-        var y = 0
-        while y < height {
-            var x = 0
-            while x < width {
-                let value = pointer[y * floatsPerRow + x]
-                total += 1
-                if value.isFinite && value > 0 {
-                    valid += 1
-                    minValue = min(minValue, value)
-                    maxValue = max(maxValue, value)
-                }
-                x += 4
-            }
-            y += 4
-        }
-
-        guard total > 0, valid > 0 else { return nil }
-        return (Double(valid) / Double(total), minValue, maxValue)
+        guard let base = CVPixelBufferGetBaseAddressOfPlane(buffer, plane) else { return nil }
+        let width = CVPixelBufferGetWidthOfPlane(buffer, plane)
+        let height = CVPixelBufferGetHeightOfPlane(buffer, plane)
+        let bytesPerRow = CVPixelBufferGetBytesPerRowOfPlane(buffer, plane)
+        let size = bytesPerRow * height
+        guard size > 0 else { return nil }
+        let data = Data(bytes: base, count: size)
+        return PlaneCopy(data: data, width: width, height: height,
+                         bytesPerRow: bytesPerRow,
+                         pixelFormat: CVPixelBufferGetPixelFormatType(buffer))
     }
 }
 
@@ -214,24 +257,109 @@ extension ARSessionManager: ARSessionDelegate {
 
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
         frameIndex += 1
-        updateFPS(now: frame.timestamp)
+        updateNativeFPS(now: frame.timestamp)
+
+        // 节流：按时间间隔抽帧。用 0.9 的容差，避免
+        // 「3 × 33.33ms = 99.99ms < 100ms」导致实际掉到 7.5 fps。
+        guard frame.timestamp - lastCaptureTimestamp >= captureInterval * 0.9 else {
+            skippedByThrottle += 1
+            return
+        }
+        lastCaptureTimestamp = frame.timestamp
+        produced += 1
+        updateCaptureFPS(now: frame.timestamp)
 
         guard let sceneDepth = frame.sceneDepth else {
-            if frame.timestamp - lastPublish >= 1.0 {
-                lastPublish = frame.timestamp
+            if frame.timestamp - lastStatusPublish >= 1.0 {
+                lastStatusPublish = frame.timestamp
                 setStatus("未收到 sceneDepth（可能被系统临时降级）")
             }
             return
         }
 
-        let rgb = frame.capturedImage
-        let depth = sceneDepth.depthMap
-        let confidence = sceneDepth.confidenceMap
+        autoreleasepool {
+            capture(frame: frame, sceneDepth: sceneDepth)
+        }
+    }
 
+    private func capture(frame: ARFrame, sceneDepth: ARDepthData) {
+        // --- 深度原始拷贝 ---
+        let depthStart = CFAbsoluteTimeGetCurrent()
+        let depthCopy = Self.copyPlane(sceneDepth.depthMap, plane: 0)
+        depthCopyMs = (CFAbsoluteTimeGetCurrent() - depthStart) * 1000
+        if let depthCopy { depthBytes = depthCopy.data.count }
+
+        // --- 置信度原始拷贝 ---
+        var confidenceCopy: PlaneCopy?
+        if let confidenceMap = sceneDepth.confidenceMap {
+            let start = CFAbsoluteTimeGetCurrent()
+            confidenceCopy = Self.copyPlane(confidenceMap, plane: 0)
+            confidenceCopyMs = (CFAbsoluteTimeGetCurrent() - start) * 1000
+            if let confidenceCopy { confidenceBytes = confidenceCopy.data.count }
+        }
+
+        // --- 从拷贝出来的数据采样，验证拷贝保真 ---
+        var depthStats: DepthSampler.Stats?
+        if let depthCopy {
+            depthStats = DepthSampler.stats(from: depthCopy.data,
+                                            width: depthCopy.width,
+                                            height: depthCopy.height,
+                                            bytesPerRow: depthCopy.bytesPerRow,
+                                            pixelFormat: depthCopy.pixelFormat)
+        }
+
+        // --- RGB 编码（独立队列）---
+        if beginEncodeIfIdle() {
+            encoderQueue.async { [weak self] in
+                let output = FrameEncoder.encode(frame.capturedImage)
+                DispatchQueue.main.async {
+                    self?.rgbPreview = output.image
+                    self?.encoderStats = output.stats
+                }
+                self?.endEncode()
+            }
+        } else {
+            droppedEncoderBusy += 1
+        }
+
+        // --- 周期性发布快照 ---
+        guard frame.timestamp - lastPublish >= 0.2 else { return }
+        lastPublish = frame.timestamp
+
+        let snapshot = makeFacts(frame: frame, depthCopy: depthCopy,
+                                 confidenceCopy: confidenceCopy, depthStats: depthStats)
+        let memory = MemoryProbe.current()
+        let stats = CaptureStats(
+            targetFPS: targetFPS,
+            nativeFPS: nativeFPS,
+            captureFPS: captureFPS,
+            elapsedSeconds: CACurrentMediaTime() - startedAt,
+            produced: produced,
+            skippedByThrottle: skippedByThrottle,
+            droppedEncoderBusy: droppedEncoderBusy,
+            depthCopyMs: depthCopyMs,
+            confidenceCopyMs: confidenceCopyMs,
+            depthBytes: depthBytes,
+            confidenceBytes: confidenceBytes,
+            residentMB: memory.residentMB,
+            peakResidentMB: memory.peakResidentMB)
+
+        DispatchQueue.main.async {
+            self.facts = snapshot
+            self.captureStats = stats
+            self.statusText = "采集中"
+        }
+    }
+
+    private func makeFacts(frame: ARFrame,
+                           depthCopy: PlaneCopy?,
+                           confidenceCopy: PlaneCopy?,
+                           depthStats: DepthSampler.Stats?) -> FrameFacts {
+        let rgb = frame.capturedImage
         var snapshot = FrameFacts()
         snapshot.frameIndex = frameIndex
         snapshot.timestamp = frame.timestamp
-        snapshot.fps = currentFPS
+        snapshot.fps = nativeFPS
         snapshot.tracking = Self.describe(frame.camera.trackingState)
 
         snapshot.rgbWidth = CVPixelBufferGetWidth(rgb)
@@ -242,17 +370,17 @@ extension ARSessionManager: ARSessionDelegate {
             CVPixelBufferGetBytesPerRowOfPlane(rgb, $0)
         }
 
-        snapshot.depthWidth = CVPixelBufferGetWidth(depth)
-        snapshot.depthHeight = CVPixelBufferGetHeight(depth)
-        snapshot.depthFormat = PixelFormatName.describe(CVPixelBufferGetPixelFormatType(depth))
-        snapshot.depthBytesPerRow = CVPixelBufferGetBytesPerRow(depth)
-
-        if let confidence {
-            snapshot.confidenceWidth = CVPixelBufferGetWidth(confidence)
-            snapshot.confidenceHeight = CVPixelBufferGetHeight(confidence)
-            snapshot.confidenceFormat = PixelFormatName.describe(
-                CVPixelBufferGetPixelFormatType(confidence))
-            snapshot.confidenceBytesPerRow = CVPixelBufferGetBytesPerRow(confidence)
+        if let depthCopy {
+            snapshot.depthWidth = depthCopy.width
+            snapshot.depthHeight = depthCopy.height
+            snapshot.depthFormat = PixelFormatName.describe(depthCopy.pixelFormat)
+            snapshot.depthBytesPerRow = depthCopy.bytesPerRow
+        }
+        if let confidenceCopy {
+            snapshot.confidenceWidth = confidenceCopy.width
+            snapshot.confidenceHeight = confidenceCopy.height
+            snapshot.confidenceFormat = PixelFormatName.describe(confidenceCopy.pixelFormat)
+            snapshot.confidenceBytesPerRow = confidenceCopy.bytesPerRow
         }
 
         let intrinsics = frame.camera.intrinsics
@@ -263,39 +391,12 @@ extension ARSessionManager: ARSessionDelegate {
         snapshot.refWidth = Int(frame.camera.imageResolution.width.rounded())
         snapshot.refHeight = Int(frame.camera.imageResolution.height.rounded())
 
-        if frame.timestamp - lastDepthSample >= 0.5 {
-            lastDepthSample = frame.timestamp
-            depthStats = Self.sampleDepth(depth)
+        if let depthStats {
+            snapshot.depthValidRatio = depthStats.validRatio
+            snapshot.depthMin = depthStats.minValue
+            snapshot.depthMax = depthStats.maxValue
         }
-        if let stats = depthStats {
-            snapshot.depthValidRatio = stats.ratio
-            snapshot.depthMin = stats.min
-            snapshot.depthMax = stats.max
-        }
-
-        if frame.timestamp - lastPublish >= 0.2 {
-            lastPublish = frame.timestamp
-            DispatchQueue.main.async {
-                self.facts = snapshot
-                self.statusText = "采集中"
-            }
-        }
-
-        // M2-b：每 0.5 s 做一次真实的转换 + 编码，用于校验颜色与测量成本。
-        // 放在独立队列，不占用 ARSession 的 delegate 队列。
-        if frame.timestamp - lastEncodeStart >= 0.5, beginEncodeIfIdle() {
-            lastEncodeStart = frame.timestamp
-            // 连同 ARFrame 一起持有：ARKit 的像素缓冲生命周期绑定在 ARFrame 上，
-            // 只保留 CVPixelBuffer 在极端情况下可能遇到缓冲被回收。
-            encoderQueue.async { [weak self] in
-                let output = FrameEncoder.encode(frame.capturedImage)
-                DispatchQueue.main.async {
-                    self?.rgbPreview = output.image
-                    self?.encoderStats = output.stats
-                }
-                self?.endEncode()
-            }
-        }
+        return snapshot
     }
 
     func session(_ session: ARSession, didFailWithError error: Error) {

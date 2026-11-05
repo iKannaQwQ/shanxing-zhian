@@ -139,6 +139,35 @@ struct SessionView: View {
                     .font(.caption2)
             }
 
+            Section {
+                FactRow(label: "目标 / 原生 FPS",
+                        value: "\(manager.captureStats.targetFPS) / \(String(format: "%.1f", manager.captureStats.nativeFPS))")
+                FactRow(label: "实测采集 FPS",
+                        value: String(format: "%.1f", manager.captureStats.captureFPS))
+                FactRow(label: "已产出帧", value: "\(manager.captureStats.produced)")
+                FactRow(label: "节流跳过", value: "\(manager.captureStats.skippedByThrottle)")
+                FactRow(label: "编码繁忙丢帧", value: "\(manager.captureStats.droppedEncoderBusy)")
+                FactRow(label: "深度拷贝",
+                        value: String(format: "%.3f ms · %d KB",
+                                      manager.captureStats.depthCopyMs,
+                                      manager.captureStats.depthBytes / 1024))
+                FactRow(label: "置信度拷贝",
+                        value: String(format: "%.3f ms · %d KB",
+                                      manager.captureStats.confidenceCopyMs,
+                                      manager.captureStats.confidenceBytes / 1024))
+                FactRow(label: "内存 常驻/峰值",
+                        value: String(format: "%.1f / %.1f MB",
+                                      manager.captureStats.residentMB,
+                                      manager.captureStats.peakResidentMB))
+                FactRow(label: "运行时长",
+                        value: String(format: "%.0f s", manager.captureStats.elapsedSeconds))
+            } header: {
+                Text("采集节流（M2-c）")
+            } footer: {
+                Text("原生 30 fps 按时间间隔抽帧到目标帧率；编码队列忙时直接丢帧，不在队列里堆积。")
+                    .font(.caption2)
+            }
+
             Section("RGB · capturedImage") {
                 FactRow(label: "分辨率", value: "\(facts.rgbWidth) × \(facts.rgbHeight)")
                 FactRow(label: "像素格式", value: facts.rgbFormat)
