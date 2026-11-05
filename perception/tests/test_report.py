@@ -151,3 +151,17 @@ def test_risk_level_basis_always_declared(pipe):
     assert_valid(out)
     assert out["rockfalls"][0]["risk_level_basis"] == "INTRUSION_GEOMETRY_ONLY"
     assert out["rockfalls"][0]["risk_level"] == "FULL"
+
+
+def test_rocks_without_road_stay_unknown(pipe):
+    """检测到落石但道路未知时，绝不能给出侵入等级（fail-closed 回归测试）。"""
+    rocks = [RockObservation(f"R{i}", BBox(100 + i * 20, 100, 160 + i * 20, 200), 0.9)
+             for i in range(3)]
+    out = pipe.process(FrameInput(
+        frame_id="f11", timestamp_ns=1, rgb=np.zeros((H, W, 3), np.uint8),
+        road_mask=np.zeros((H, W), np.uint8), rocks=rocks))
+    assert_valid(out)
+    assert out["system_status"] == "NO_ROAD"
+    assert len(out["rockfalls"]) == 3
+    assert all(r["risk_level"] == "UNKNOWN" for r in out["rockfalls"])
+    assert out["metrics"]["max_risk_level"] == "UNKNOWN"

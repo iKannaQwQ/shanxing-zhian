@@ -51,3 +51,6 @@ config/local.*.yaml
 perception/third_party/
 perception/.venv/
 perception/results/
+
+runs/
+perception/weights/
