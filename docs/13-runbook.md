@@ -241,11 +241,28 @@ perception/.venv/bin/python scripts/smoke_test_backend.py
 | 日志 | `data/logs/` | 后端 / worker 日志 |
 | 进程号 | `data/run/` | 启停脚本用 |
 
-### 保留策略
+### 保留策略（两套，互不影响）
 
-默认保留 **24 小时**，后台每 2 秒检查一次并自动清理。
+| 内容 | 默认保留 | 环境变量 | 说明 |
+|---|---|---|---|
+| 数据库记录 | 24 小时 | `ROAD_RETENTION_HOURS` | 判定、事件、帧元数据 |
+| **原始帧文件** | **30 分钟** | `ROAD_ARTIFACT_HOURS` | 图像/深度，**体积增长极快** |
 
-改保留时长：`ROAD_RETENTION_HOURS=72 bash scripts/start_all.sh`
+**为什么原始文件只留 30 分钟**：
+
+```
+10 fps × 约 340 KB/帧 ≈ 3.4 MB/s ≈ 12 GB/小时
+```
+
+实测两小时测试就攒了 **672 MB**。如果按 24 小时留，会到 **280 GB**。
+
+文件清理有三条豁免规则（都有测试覆盖）：
+
+1. **还没被 AI 处理的帧** —— 删了 worker 就读不到
+2. **被落石事件引用的帧** —— 事件截图要能看
+3. 其余按时间清理；数据库行保留，历史表格里仍能看到记录
+
+调整：`ROAD_ARTIFACT_HOURS=2 bash scripts/start_all.sh`（约 24 GB，注意磁盘）
 
 ### 彻底重置（清空所有历史）
 

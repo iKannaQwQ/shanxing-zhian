@@ -343,6 +343,27 @@ class Database:
             device["latency_ms"] = meta.get("latency_ms")
         return devices
 
+    def frame_ids_since(self, cutoff_ns: int) -> list[str]:
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT frame_id FROM frames WHERE ts_received_ns >= ?",
+                (cutoff_ns,)).fetchall()
+        return [r["frame_id"] for r in rows]
+
+    def pending_frame_ids(self) -> list[str]:
+        """还在等 AI 处理的帧：文件必须留着，否则 worker 永远读不到。"""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT frame_id FROM frames WHERE status = 'stored'").fetchall()
+        return [r["frame_id"] for r in rows]
+
+    def protected_frame_ids(self) -> list[str]:
+        """被事件引用的帧（截图不能被清理掉）。"""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT frame_id FROM rock_events WHERE frame_id IS NOT NULL").fetchall()
+        return [r["frame_id"] for r in rows]
+
     def all_frame_ids(self) -> list[str]:
         with self._lock:
             rows = self._conn.execute("SELECT frame_id FROM frames").fetchall()

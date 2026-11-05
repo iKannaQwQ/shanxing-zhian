@@ -53,6 +53,7 @@ async def _monitor_loop(app: FastAPI, settings: Settings) -> None:
     """过期检测、设备离线、保留清理。全部是读库 + 判状态，不做任何推理。"""
     offline_devices: set[str] = set()
     stale_announced = False
+    last_sweep = 0.0
     while True:
         await asyncio.sleep(2.0)
         try:
@@ -95,13 +96,26 @@ async def _monitor_loop(app: FastAPI, settings: Settings) -> None:
                 await hub.broadcast({"type": "stale" if is_stale else "fresh",
                                      "age_ms": round(age_ms or 0)})
 
-            # 4) 保留窗口清理（数据库 + 文件）
+            # 4) 数据库保留窗口
             retention_cutoff = now_ns() - int(settings.retention_hours * 3600 * 1e9)
             removed = db.purge_older_than(retention_cutoff)
             if any(removed.values()):
-                keep = set(db.all_frame_ids())
+                print(f"[retention] 数据库 {removed}", flush=True)
+
+            # 5) 原始文件清理（独立且更频繁：体积增长远快于数据库）
+            now_s = time.time()
+            if now_s - last_sweep >= settings.artifact_sweep_s:
+                last_sweep = now_s
+                cutoff = now_ns() - int(settings.artifact_hours * 3600 * 1e9)
+                keep = (set(db.frame_ids_since(cutoff))
+                        | set(db.protected_frame_ids())
+                        | set(db.pending_frame_ids()))
                 files = app.state.store.prune_missing(keep)
-                print(f"[retention] 数据库 {removed}，文件 {files} 个", flush=True)
+                if files:
+                    usage = app.state.store.disk_usage()
+                    print(f"[artifacts] 清理 {files} 个帧目录，"
+                          f"剩余 {usage['files']} 文件 / {usage['bytes'] / 1e6:.1f} MB",
+                          flush=True)
         except asyncio.CancelledError:
             raise
         except Exception as exc:  # noqa: BLE001
@@ -453,7 +467,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             return JSONResponse(status_code=503, content={"ok": False, "code": "STARTING"})
 
         frame_id = (payload or {}).get("frame_id")
+        failure = (payload or {}).get("error")
         report = (payload or {}).get("perception") or (payload or {}).get("report")
+
+        # worker 处理失败时显式上报，避免同一帧被反复拉取（毒帧）
+        if frame_id and failure and not isinstance(report, dict):
+            frame = app.state.db.frame(frame_id)
+            if frame and frame["status"] == "stored":
+                app.state.db.mark_frame(frame_id, "failed", str(failure)[:300])
+                app.state.db.insert_event(now_ns(), frame_id, frame["device_id"],
+                                          "ERROR", "PERCEPTION_FAILED", str(failure)[:300])
+                await app.state.hub.broadcast({"type": "error", "code": "PERCEPTION_FAILED",
+                                               "frame_id": frame_id})
+            return {"accepted": True, "frame_id": frame_id, "status": "failed"}
+
         if not frame_id or not isinstance(report, dict):
             return JSONResponse(status_code=422,
                                 content={"ok": False, "code": "BAD_PAYLOAD",

@@ -44,6 +44,13 @@ class Settings:
 
     # 设备多久没有心跳/上传就算离线
     device_offline_seconds: float = float(_env("ROAD_DEVICE_OFFLINE_S", "15"))
+    # 原始帧文件的保留期。必须远短于数据库保留期：
+    # 10 fps × 约 340 KB ≈ 12 GB/小时，按 24 小时留会撑爆磁盘。
+    # 事件截图涉及的关键帧会自动豁免。
+    artifact_hours: float = float(_env("ROAD_ARTIFACT_HOURS", "0.5"))
+    # 原始文件清理的检查间隔
+    artifact_sweep_s: float = float(_env("ROAD_ARTIFACT_SWEEP_S", "60"))
+
     # 帧等待 AI 结果多久算过期（AI 挂了不能让帧永远挂着）
     frame_expire_seconds: float = float(_env("ROAD_FRAME_EXPIRE_S", "20"))
     # 最新判定多久算数据过期

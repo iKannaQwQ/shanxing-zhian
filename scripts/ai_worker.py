@@ -124,8 +124,15 @@ def main() -> int:
                         print(f"[ai-worker] 回传失败 HTTP {code}: {response}", flush=True)
                 except Exception as exc:  # noqa: BLE001
                     failed += 1
-                    # 不回传失败结果：让后端按超时标记 expired，避免"假装处理过"
                     print(f"[ai-worker] 处理 {frame_id[:8]} 出错: {exc}", flush=True)
+                    # 上报失败，让后端把这一帧标成 failed；否则它会被反复拉取
+                    try:
+                        http_json(f"{base}/api/v1/ingest/perception", method="POST",
+                                  payload={"frame_id": frame_id,
+                                           "error": f"{type(exc).__name__}: {exc}"})
+                    except Exception:  # noqa: BLE001
+                        pass
+                    time.sleep(0.2)
 
                 if args.max_frames and processed >= args.max_frames:
                     print(f"[ai-worker] 已达 {args.max_frames} 帧，退出", flush=True)

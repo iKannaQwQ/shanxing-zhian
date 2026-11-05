@@ -80,7 +80,9 @@ New-NetFirewallRule -DisplayName "MountainRoad 8000" -Direction Inbound `
 |---|---|---|
 | `ROAD_DB` | `data/db/mountain.db` | SQLite 路径 |
 | `ROAD_ARTIFACTS_DIR` | `data/artifacts` | 原始帧落盘目录 |
-| `ROAD_RETENTION_HOURS` | 24 | 数据保留窗口 |
+| `ROAD_RETENTION_HOURS` | 24 | 数据库记录保留窗口 |
+| `ROAD_ARTIFACT_HOURS` | 0.5 | 原始帧文件保留窗口（约 12 GB/小时，勿照抄数据库值） |
+| `ROAD_ARTIFACT_SWEEP_S` | 60 | 文件清理检查间隔 |
 | `ROAD_DEVICE_OFFLINE_S` | 15 | 多久无数据判定离线 |
 | `ROAD_FRAME_EXPIRE_S` | 20 | 帧等待 AI 结果的超时 |
 | `ROAD_STALE_AFTER_S` | 5 | 最新判定多久算过期 |
