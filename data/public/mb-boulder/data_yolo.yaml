@@ -1,0 +1,7 @@
+path: boulder_det
+train : data/train/images
+val : data/val/images
+test : data/test/images
+
+nc : 1
+names : ['boulder']

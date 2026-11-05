@@ -1,0 +1,18 @@
+{
+  "train": {
+    "rows": 39,
+    "images": 39,
+    "boxes": 5536,
+    "skipped": 0,
+    "clipped": 0,
+    "dropped_degenerate": 0
+  },
+  "val": {
+    "rows": 6,
+    "images": 6,
+    "boxes": 904,
+    "skipped": 0,
+    "clipped": 0,
+    "dropped_degenerate": 0
+  }
+}

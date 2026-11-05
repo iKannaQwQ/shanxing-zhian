@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mountain-road.local/schemas/perception_report.schema.json",
+  "title": "PerceptionFrameReport",
+  "description": "感知模块单帧统一输出（M7）。risk_level 仅表示落石对道路的几何侵入程度，不代表道路安全。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "frame_id", "timestamp", "timestamp_ns", "source",
+    "system_status", "road_detected", "road_mask_status", "road",
+    "rockfalls", "depth", "metrics", "reasons", "disclaimer"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "pattern": "^\\d+\\.\\d+$" },
+    "frame_id": { "type": "string", "minLength": 1 },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "timestamp_ns": { "type": "integer", "minimum": 0 },
+    "source": { "enum": ["LIVE", "REPLAY", "SIMULATED"] },
+    "system_status": {
+      "enum": ["OK", "DEGRADED", "NO_ROAD", "NO_DEPTH", "INPUT_ERROR", "TIMEOUT", "DISCONNECTED"]
+    },
+    "road_detected": { "type": "boolean" },
+    "road_mask_status": {
+      "enum": ["OK", "EMPTY", "TOO_SMALL", "FRAGMENTED", "LOW_CONFIDENCE", "FAILED"]
+    },
+    "road": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["coverage_ratio", "component_count", "hole_ratio", "polygon",
+                   "width_profile", "centerline"],
+      "properties": {
+        "coverage_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "component_count": { "type": "integer", "minimum": 0 },
+        "hole_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "polygon": {
+          "type": "array",
+          "items": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }
+        },
+        "width_profile": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["y", "left", "right", "width_px"],
+            "properties": {
+              "y": { "type": "number" },
+              "left": { "type": "number" },
+              "right": { "type": "number" },
+              "width_px": { "type": "number", "minimum": 0 },
+              "y0": { "type": "number" },
+              "y1": { "type": "number" }
+            }
+          }
+        },
+        "centerline": {
+          "type": "array",
+          "items": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }
+        }
+      }
+    },
+    "rockfalls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["rock_id", "label", "bbox", "confidence", "truncated",
+                     "road_overlap_ratio", "bbox_overlap_ratio", "intrusion",
+                     "risk_level", "risk_level_basis", "evidence", "depth_estimate", "reasons"],
+        "properties": {
+          "rock_id": { "type": "string", "minLength": 1 },
+          "label": { "type": "string" },
+          "bbox": {
+            "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4
+          },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "truncated": { "type": "boolean" },
+          "road_overlap_ratio": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+          "bbox_overlap_ratio": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+          "intrusion": { "enum": ["NONE", "EDGE", "PARTIAL", "FULL", "UNKNOWN"] },
+          "risk_level": { "enum": ["NONE", "EDGE", "PARTIAL", "FULL", "UNKNOWN"] },
+          "risk_level_basis": { "const": "INTRUSION_GEOMETRY_ONLY" },
+          "evidence": { "enum": ["RGB_D", "RGB_ONLY", "UNAVAILABLE"] },
+          "lateral_offset_norm": { "type": ["number", "null"] },
+          "remaining_width_px": { "type": ["number", "null"], "minimum": 0 },
+          "remaining_width_m": { "type": ["number", "null"], "minimum": 0 },
+          "in_road_by_center": { "type": ["boolean", "null"] },
+          "depth_estimate": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["distance_m", "source", "valid_ratio", "sample_count", "point_xyz_m", "reason"],
+            "properties": {
+              "distance_m": { "type": ["number", "null"], "minimum": 0 },
+              "source": { "enum": ["NONE", "LIDAR", "MONOCULAR"] },
+              "valid_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+              "sample_count": { "type": "integer", "minimum": 0 },
+              "point_xyz_m": {
+                "type": ["array", "null"],
+                "items": { "type": "number" }, "minItems": 3, "maxItems": 3
+              },
+              "reason": { "type": "string" }
+            }
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["code", "message"],
+              "properties": {
+                "code": { "type": "string" },
+                "message": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "depth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["usable", "reasons"],
+      "properties": {
+        "usable": { "type": "boolean" },
+        "reasons": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rock_count", "max_risk_level"],
+      "properties": {
+        "rock_count": { "type": "integer", "minimum": 0 },
+        "max_risk_level": { "enum": ["NONE", "EDGE", "PARTIAL", "FULL", "UNKNOWN"] },
+        "combined_remaining_width_px": { "type": ["number", "null"] },
+        "combined_blocked": { "type": ["boolean", "null"] },
+        "timings_ms": {
+          "type": "object",
+          "additionalProperties": { "type": "number", "minimum": 0 }
+        }
+      }
+    },
+    "reasons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message"],
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      }
+    },
+    "disclaimer": { "type": "string", "minLength": 10 }
+  }
+}
