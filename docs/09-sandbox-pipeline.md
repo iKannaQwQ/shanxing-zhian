@@ -36,6 +36,9 @@ data/sandbox/
     └── split.json
 ```
 
+> `data/sandbox/` 与 `data/public/` 均已在 `.gitignore` 中。
+> 采集数据体积大、随场景变化；第三方数据集有各自的许可证，不应随仓库分发。
+
 **约定要点**：
 
 | 项 | 规则 | 原因 |
