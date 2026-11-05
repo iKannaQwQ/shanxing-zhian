@@ -1,80 +1,9 @@
-/** 后端接口类型与极简请求封装。 */
+import type { AssessmentRow, DeviceRow, EventRow, StatusPayload } from './types'
 
-export type RiskLevel = 'SAFE' | 'LOW' | 'MEDIUM' | 'HIGH' | 'UNKNOWN'
-export type Passability = 'PASSABLE' | 'RESTRICTED' | 'BLOCKED' | 'UNKNOWN'
-export type AlternativeStatus = 'AVAILABLE' | 'UNAVAILABLE' | 'UNKNOWN' | 'NOT_EVALUATED'
-
-export interface AssessmentRow {
-  frame_id: string
-  device_id: string
-  ts_assessed_ns: number
-  overall_risk: RiskLevel
-  system_status: string
-  a_to_b: Passability | null
-  b_to_a: Passability | null
-  alternative_status: AlternativeStatus | null
-  road_detected: number
-  road_status: string | null
-  road_coverage: number | null
-  rock_count: number | null
-  processing_ms: number | null
-  json: string
-}
-
-export interface EventRow {
-  id: number
-  ts_ns: number
-  frame_id: string | null
-  device_id: string | null
-  level: 'INFO' | 'WARNING' | 'CRITICAL' | 'ERROR'
-  code: string
-  message: string | null
-}
-
-export interface DeviceRow {
-  device_id: string
-  first_seen_ns: number
-  last_seen_ns: number
-  frames: number
-  last_status: string | null
-  online?: boolean
-  silent_ms?: number
-  thermal?: string | null
-  target_fps?: number | null
-}
-
-export interface StatusPayload {
-  ready: boolean
-  server_ns?: number
-  latest: AssessmentRow | null
-  age_ms?: number | null
-  stale?: boolean
-  stale_after_ms?: number
-  queue: { depth: number; capacity: number }
-  counters: { queued: number; processed: number; failed: number; dropped: number }
-  db: { frames: number; processed: number; failed: number; dropped: number; assessments: number; events: number }
-  ws_clients: number
-  last_processing_ms: number
-}
-
-/** WebSocket 推送的单帧判定。 */
-export interface AssessmentMessage {
-  type: 'assessment'
-  frame_id: string
-  device_id: string
-  seq: number | null
-  ts_ns: number
-  overall_risk: RiskLevel
-  system_status: string
-  passability: Record<string, Passability>
-  alternative: AlternativeStatus
-  road_status: string | null
-  road_coverage: number | null
-  rock_count: number
-  processing_ms: number
-  dropped_since_last: number
-  reasons: string[]
-}
+export type { AssessmentRow, DeviceRow, EventRow, StatusPayload } from './types'
+export type {
+  AlternativeStatus, AssessmentMessage, InferenceSource, Passability, RiskLevel,
+} from './types'
 
 const BASE = import.meta.env.VITE_API_BASE ?? ''
 
@@ -94,6 +23,11 @@ export const api = {
     ),
   events: (limit = 20) => getJSON<{ items: EventRow[] }>(`/api/v1/events?limit=${limit}`),
   devices: () => getJSON<{ items: DeviceRow[] }>('/api/v1/devices'),
+}
+
+/** 最新一帧的 RGB 地址（后端按 frame_id 提供）。 */
+export function frameImageURL(frameId: string): string {
+  return `${BASE}/api/v1/frames/${frameId}/rgb`
 }
 
 export function wsURL(): string {

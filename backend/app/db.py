@@ -95,6 +95,7 @@ class Database:
                        ("processed_ns", "INTEGER")],
             "devices": [("last_heartbeat_ns", "INTEGER"), ("thermal", "TEXT"),
                         ("target_fps", "INTEGER")],
+            "assessments": [("source", "TEXT")],
         }
         for table, columns in additions.items():
             existing = {row[1] for row in
@@ -156,11 +157,11 @@ class Database:
                 """INSERT OR REPLACE INTO assessments
                    (frame_id, device_id, ts_assessed_ns, overall_risk, system_status,
                     a_to_b, b_to_a, alternative_status, road_detected, road_status,
-                    road_coverage, rock_count, processing_ms, json)
+                    road_coverage, rock_count, processing_ms, source, json)
                    VALUES (:frame_id, :device_id, :ts_assessed_ns, :overall_risk,
                            :system_status, :a_to_b, :b_to_a, :alternative_status,
                            :road_detected, :road_status, :road_coverage, :rock_count,
-                           :processing_ms, :json)""", row)
+                           :processing_ms, :source, :json)""", row)
             self._conn.commit()
 
     def insert_event(self, ts_ns: int, frame_id: str | None, device_id: str | None,

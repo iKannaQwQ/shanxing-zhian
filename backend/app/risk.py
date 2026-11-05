@@ -76,6 +76,7 @@ def assess_and_store(db: Database, engine: RiskEngine, frame_id: str,
         "road_coverage": perception.get("road", {}).get("coverage_ratio", 0.0),
         "rock_count": len(perception.get("rockfalls", [])),
         "processing_ms": round(engine_ms, 2),
+        "source": report.get("source", "LIVE"),
         "json": json.dumps(status, ensure_ascii=False),
     })
     db.mark_frame(frame_id, "processed")

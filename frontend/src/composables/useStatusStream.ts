@@ -1,6 +1,7 @@
 import { onMounted, onUnmounted, ref } from 'vue'
-import { wsURL, type AssessmentMessage } from '../api/client'
+import { wsURL } from '../api/client'
 import { rowToMessage } from '../api/mappers'
+import type { AssessmentMessage } from '../api/types'
 
 /** 订阅后端 /ws/status，断线自动重连。 */
 export function useStatusStream() {
@@ -8,6 +9,7 @@ export function useStatusStream() {
   const last = ref<AssessmentMessage | null>(null)
   const received = ref(0)
   const lastAt = ref<Date | null>(null)
+  const error = ref<string | null>(null)
 
   let socket: WebSocket | null = null
   let retryTimer: number | null = null
@@ -23,6 +25,7 @@ export function useStatusStream() {
     }
     socket.onopen = () => {
       connected.value = true
+      error.value = null
     }
     socket.onmessage = (event) => {
       try {
@@ -31,9 +34,14 @@ export function useStatusStream() {
           last.value = data as AssessmentMessage
           received.value += 1
           lastAt.value = new Date()
-        } else if (data.type === 'snapshot' && data.latest) {
-          last.value = rowToMessage(data.latest)
-          lastAt.value = new Date()
+        } else if (data.type === 'snapshot') {
+          // 快照是补发的历史值，只用于首屏兜底，不算“实时收到”
+          if (data.latest) {
+            const mapped = rowToMessage(data.latest)
+            if (!last.value) last.value = mapped
+          }
+        } else if (data.type === 'error') {
+          error.value = `${data.code ?? 'ERROR'}${data.frame_id ? ` (${String(data.frame_id).slice(0, 8)})` : ''}`
         }
       } catch {
         /* 忽略无法解析的消息 */
@@ -44,6 +52,7 @@ export function useStatusStream() {
       scheduleReconnect()
     }
     socket.onerror = () => {
+      error.value = 'WebSocket 连接失败'
       socket?.close()
     }
   }
@@ -63,5 +72,5 @@ export function useStatusStream() {
     socket?.close()
   })
 
-  return { connected, last, received, lastAt }
+  return { connected, last, received, lastAt, error }
 }

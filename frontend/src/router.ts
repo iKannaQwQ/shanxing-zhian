@@ -1,11 +1,21 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
-import LiveView from './views/LiveView.vue'
+import UserLayout from './layouts/UserLayout.vue'
+import AdminLayout from './layouts/AdminLayout.vue'
+import HomeView from './views/user/HomeView.vue'
 import AdminView from './views/AdminView.vue'
 
 export const router = createRouter({
   history: createWebHashHistory(),
   routes: [
-    { path: '/', name: 'live', component: LiveView, meta: { title: '实时状态' } },
-    { path: '/admin', name: 'admin', component: AdminView, meta: { title: '管理后台' } },
+    {
+      path: '/',
+      component: UserLayout,
+      children: [{ path: '', name: 'home', component: HomeView }],
+    },
+    {
+      path: '/admin',
+      component: AdminLayout,
+      children: [{ path: '', name: 'admin', component: AdminView }],
+    },
   ],
 })

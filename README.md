@@ -16,7 +16,7 @@
 | P4 | 感知模块 M1–M7 | 🟡 代码完成、49 项测试通过，**模型未在沙盘验证**（见 [感知模块](docs/03-perception.md)） |
 | P5 | 融合 + 全链路 | ⬜ 未开始 |
 | P6 | 后端（FastAPI+SQLite+WS） | ✅ 完成，14 项测试；推理已解耦（见 [后端 API](docs/10-backend-api.md)） |
-| P7 | 前端（实时页 + 管理后台） | ✅ 构建通过，**未做浏览器验证**（见 [前端](docs/08-frontend.md)） |
+| P7 | 前端（M1 结构 / M2 用户首页） | 🚧 进行中，M3–M6 管理后台待做（见 [前端](docs/08-frontend.md)） |
 | P8 | Windows 部署与实机验证 | ⬜ 未开始 |
 
 详细设计与阶段出口准则见 [docs/00-architecture.md](docs/00-architecture.md)。

@@ -1,5 +1,23 @@
 # 08 · 前端（Vue 3 + TypeScript + Element Plus）
 
+> **状态：按 M1–M9 分阶段重建中。**
+> 已完成：M1（工程结构）、M2（用户端首页）。
+> 管理后台的 5 个页面（M3–M6）尚未开始，旧的单页 AdminView 暂作占位。
+>
+> 目录结构：
+> ```
+> src/
+> ├── api/          types.ts（枚举与实体）、client.ts、mappers.ts
+> ├── composables/  useStatusStream（WS）、useSystemStatus（轮询兜底）
+> ├── layouts/      UserLayout、AdminLayout
+> ├── views/user/   HomeView（M2）
+> └── views/        AdminView（占位，M3 起替换）
+> ```
+>
+> **枚举词表**：产品侧通行状态为 PASSABLE / PARTIALLY_BLOCKED / BLOCKED / UNKNOWN，
+> 后端契约当前使用 RESTRICTED 表示部分受阻，映射集中在 `api/mappers.ts` 一处。
+> 后端是否改名待定（会影响 C++ 引擎与契约）。
+
 > 两个页面：实时状态（用户）、管理后台。
 > 构建产物由后端直接托管，一个地址访问，WebSocket 同源可用。
 
