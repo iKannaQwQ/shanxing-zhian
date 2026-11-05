@@ -9,7 +9,7 @@
 |---|---|---|
 | P0 | 工程骨架、契约 schema、契约校验器、环境自检 | ✅ 完成 |
 | P1a | C++ 风险评估引擎 | ✅ 完成，46 项测试（见 [风险引擎](docs/04-risk-engine.md)） |
-| P1b | iOS ARKit 采集端 | 🟡 M1 已完成并**真机验证**（iPhone 12 Pro Max / iOS 27.0.1），采集未实现（见 [iOS 采集端](docs/05-ios-capture.md)） |
+| P1b | iOS ARKit 采集端 | 🟡 M1 已验证；M2-a（格式实测）已实现待真机确认（见 [iOS 采集端](docs/05-ios-capture.md)） |
 | P2 | 后端最小闭环 | ⬜ 未开始 |
 | P3 | 感知-深度几何 | ⬜ 未开始 |
 | P4 | 感知模块 M1–M7 | 🟡 代码完成、49 项测试通过，**模型未在沙盘验证**（见 [感知模块](docs/03-perception.md)） |

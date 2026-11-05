@@ -13,6 +13,10 @@
 		AA00000000000000000000C4 /* CapabilityChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000B1 /* CapabilityChecker.swift */; };
 		AA00000000000000000000C5 /* CapabilityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000B2 /* CapabilityView.swift */; };
 		AA00000000000000000000C6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000B3 /* Assets.xcassets */; };
+		AA00000000000000000000C7 /* FrameFacts.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000B5 /* FrameFacts.swift */; };
+		AA00000000000000000000C8 /* ARSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000B6 /* ARSessionManager.swift */; };
+		AA00000000000000000000C9 /* ARPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000B7 /* ARPreviewView.swift */; };
+		AA00000000000000000000CA /* SessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000B8 /* SessionView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -23,6 +27,10 @@
 		AA00000000000000000000B1 /* CapabilityChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapabilityChecker.swift; sourceTree = "<group>"; };
 		AA00000000000000000000B2 /* CapabilityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapabilityView.swift; sourceTree = "<group>"; };
 		AA00000000000000000000B3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AA00000000000000000000B5 /* FrameFacts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameFacts.swift; sourceTree = "<group>"; };
+		AA00000000000000000000B6 /* ARSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARSessionManager.swift; sourceTree = "<group>"; };
+		AA00000000000000000000B7 /* ARPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARPreviewView.swift; sourceTree = "<group>"; };
+		AA00000000000000000000B8 /* SessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -57,6 +65,7 @@
 			children = (
 				AA00000000000000000000A7 /* App.swift */,
 				AA00000000000000000000A6 /* Capability */,
+				AA00000000000000000000B4 /* Capture */,
 				AA00000000000000000000B3 /* Assets.xcassets */,
 			);
 			path = RockRoadCapture;
@@ -71,6 +80,17 @@
 				AA00000000000000000000B2 /* CapabilityView.swift */,
 			);
 			path = Capability;
+			sourceTree = "<group>";
+		};
+		AA00000000000000000000B4 /* Capture */ = {
+			isa = PBXGroup;
+			children = (
+				AA00000000000000000000B5 /* FrameFacts.swift */,
+				AA00000000000000000000B6 /* ARSessionManager.swift */,
+				AA00000000000000000000B7 /* ARPreviewView.swift */,
+				AA00000000000000000000B8 /* SessionView.swift */,
+			);
+			path = Capture;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -147,6 +167,10 @@
 				AA00000000000000000000C3 /* DeviceInfo.swift in Sources */,
 				AA00000000000000000000C4 /* CapabilityChecker.swift in Sources */,
 				AA00000000000000000000C5 /* CapabilityView.swift in Sources */,
+				AA00000000000000000000C7 /* FrameFacts.swift in Sources */,
+				AA00000000000000000000C8 /* ARSessionManager.swift in Sources */,
+				AA00000000000000000000C9 /* ARPreviewView.swift in Sources */,
+				AA00000000000000000000CA /* SessionView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

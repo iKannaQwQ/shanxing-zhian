@@ -163,7 +163,46 @@ Xcode 27 默认倾向 Swift 6 严格并发。M1 没有并发代码，但 M2 会�
 
 ---
 
-## 7. 下一步（M2 预告，尚未实施）
+## 7. M2-a：采集格式实测（已实现，待真机验证）
+
+M2 的第一步**不是**写编码和上传，而是把格式量出来。因为
+`supportsFrameSemantics(.sceneDepth)` 只回答"支不支持"，不回答"多大、什么格式"。
+
+### 7.1 做了什么
+
+新增 Tab「采集实测」，启动 `ARWorldTrackingConfiguration`（`frameSemantics = [.sceneDepth]`），
+把**同一个 `ARFrame`** 里的以下数值实时显示并支持一键复制：
+
+| 组 | 内容 |
+|---|---|
+| 运行 | 帧序号、跟踪状态、实测 FPS |
+| RGB | 分辨率、像素格式、plane 数、每个 plane 的 bytesPerRow |
+| 深度 | 分辨率、像素格式、bytesPerRow、有效像素比例、深度范围（米） |
+| 置信度 | 分辨率、像素格式、bytesPerRow |
+| 内参 | fx / fy / cx / cy、参考分辨率 |
+| 对齐 | 深度/RGB 缩放比、宽高比是否一致 |
+
+### 7.2 三个刻意的实现选择
+
+1. **像素格式用系统常量匹配，不靠 fourCC 字符串记忆**。
+   `PixelFormatName.describe` 里是 `case kCVPixelFormatType_DepthFloat32:` 这类分支，
+   认不出的才回退到打印 fourCC。这样显示的名字不可能因为记忆错误而错。
+2. **深度采样只在 float32 格式下进行**。其他格式直接返回"未采样"，
+   绝不按猜测的内存布局去读——读错内存比读不到更糟。
+3. **预览用 ARSCNView**，不自己做 YUV→RGB。M2-a 只需确认"会话真的在出图"，
+   YUV 转换是 M2-b 的活，不应提前混进来。
+
+### 7.3 这一版要回答的问题
+
+- 深度图真实分辨率是多少？（文档说 256×192，但 iOS 27 上没实测过）
+- 深度像素格式是 `DepthFloat32` 还是 `DisparityFloat32`？
+- RGB 是几个 plane？每 plane 的 bytesPerRow 是多少？
+- `camera.intrinsics` 的参考分辨率是不是 1920×1440？
+- 深度与 RGB 的宽高比是否一致（决定 M5 能否按比例缩放）？
+
+回答完这些，M2-b（YUV→RGB + JPEG）才有依据。
+
+## 8. 下一步（M2-b 及以后，尚未实施）
 
 M2 要做 RGB + sceneDepth 同步采集，必须解决的几个问题：
 
