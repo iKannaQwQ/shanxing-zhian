@@ -559,8 +559,53 @@ RGB 用 `UIImage.Orientation.right` 纠正了，而伪彩色 CGImage 是裸图�
 画面是近距离平面物体，深度无噪声条纹，说明数据本身是干净的——
 之前看到的"浅色、低置信度"是量程问题，不是解码问题。
 
-## 13. 下一步（M5 之前的两项准备）
+## 13. M5：局域网 HTTP 上传（已实现）
 
-1. **跟踪状态门控**：只对 `tracking == normal` 且会话已稳定（≥1 s）的帧打包/上传，
-   避免把初始化阶段的不可靠内参发到后端。
-2. **M5 上传**：multipart/form-data、IP/端口配置、连接测试、重试、有界队列、丢帧统计。
+### 13.1 传输格式
+
+`POST http://<ip>:<port>/api/v1/ingest/frame`，`multipart/form-data`：
+
+| part | filename | Content-Type | 内容 |
+|---|---|---|---|
+| `meta` | 无（表单字段） | application/json | FrameBundle 元数据 |
+| `rgb` | rgb.jpg | image/jpeg | 1280×960 |
+| `depth` | depth.bin | application/octet-stream | 256×192 float32 |
+| `confidence` | confidence.bin | application/octet-stream | 256×192 uint8 |
+
+`meta` 不带 filename（作为普通表单字段），文件 part 带 filename——这是与
+`scripts/dev_receiver.py` 对齐的约定。
+
+### 13.2 可靠性设计
+
+| 机制 | 做法 |
+|---|---|
+| 有界队列 | 容量 16 帧；满了**丢最旧**（积压的帧到得越晚越没意义） |
+| 重试 | 最多 3 次，退避 0.2 / 0.5 / 1.0 s；仍失败则丢弃并计数 |
+| 串行上传 | 同时只有一个请求在飞，便于观察拥塞 |
+| 超时 | 请求 3 s，资源 10 s |
+| 质量门控 | `tracking != normal` 或会话开始 < 1 s 的帧**不上传**（见 §12.2） |
+| 连接测试 | `GET /api/v1/health`，2 s 超时 |
+
+所有状态只在 `stateQueue` 上修改，对外发布不可变快照。
+
+### 13.3 网络配置
+
+iOS 侧需要两件事，已写入 `Info.plist`：
+
+* `NSLocalNetworkUsageDescription` — iOS 14+ 本地网络权限弹窗
+* `NSAppTransportSecurity` — `NSAllowsLocalNetworking` + 开发期 `NSAllowsArbitraryLoads`
+
+> `NSAllowsArbitraryLoads` 是**开发期**设置，发布前必须收紧。
+
+### 13.4 开发期接收端
+
+`scripts/dev_receiver.py`（FastAPI）实现了契约校验 + 落盘 + 统计：
+
+* 校验 metadata 符合 schema；
+* 校验三个二进制 part 的字节数与 metadata 一致；
+* 落盘到 `data/incoming/<frame_id>/`；
+* 返回 sha256 前缀便于比对。
+
+已用 curl + 真实 bundle 做过正反测试：正常帧 200 + 408 KB，深度截断帧 422。
+
+## 14. 下一步

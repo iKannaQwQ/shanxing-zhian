@@ -8,6 +8,7 @@ import UIKit
 struct SessionView: View {
 
     @StateObject private var manager = ARSessionManager()
+    @ObservedObject private var settings = UploadSettings.shared
     @State private var copied = false
 
     private var facts: FrameFacts { manager.facts }
@@ -223,6 +224,58 @@ struct SessionView: View {
                     .font(.caption2)
             }
 
+            Section {
+                HStack {
+                    Text("IP").font(.subheadline).frame(width: 26, alignment: .leading)
+                    TextField("192.168.1.10", text: $settings.host)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .keyboardType(.URL)
+                        .font(.subheadline.monospaced())
+                }
+                HStack {
+                    Text("端口").font(.subheadline).frame(width: 26, alignment: .leading)
+                    TextField("8000", text: $settings.port)
+                        .keyboardType(.numberPad)
+                        .font(.subheadline.monospaced())
+                }
+
+                Button {
+                    Task { await manager.uploader.testConnection(settings: settings) }
+                } label: {
+                    Label("测试连接", systemImage: "antenna.radiowaves.left.and.right")
+                }
+                .disabled(!settings.isValid)
+
+                HStack {
+                    Text("连接").font(.subheadline)
+                    Spacer()
+                    Text(connectionText)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(connectionColor)
+                        .multilineTextAlignment(.trailing)
+                }
+
+                FactRow(label: "已发送", value: "\(manager.uploadStats.sent)")
+                FactRow(label: "失败", value: "\(manager.uploadStats.failed)")
+                FactRow(label: "队列",
+                        value: "\(manager.uploadStats.queued) / \(manager.uploadStats.capacity)")
+                FactRow(label: "溢出丢弃", value: "\(manager.uploadStats.droppedOverflow)")
+                FactRow(label: "质量门控丢弃", value: "\(manager.uploadStats.droppedQuality)")
+                FactRow(label: "延迟 最近/平均",
+                        value: String(format: "%.0f / %.0f ms",
+                                      manager.uploadStats.lastLatencyMs,
+                                      manager.uploadStats.avgLatencyMs))
+                if let error = manager.uploadStats.lastError {
+                    FactRow(label: "错误", value: error)
+                }
+            } header: {
+                Text("M5 上传")
+            } footer: {
+                Text("先在电脑上运行 scripts/dev_receiver.py，填入电脑的局域网 IP 与端口。质量门控会跳过跟踪未就绪与会话开始 1 秒内的帧。")
+                    .font(.caption2)
+            }
+
             Section("RGB · capturedImage") {
                 FactRow(label: "分辨率", value: "\(facts.rgbWidth) × \(facts.rgbHeight)")
                 FactRow(label: "像素格式", value: facts.rgbFormat)
@@ -277,6 +330,24 @@ struct SessionView: View {
             }
         }
         .listStyle(.insetGrouped)
+    }
+
+    private var connectionText: String {
+        switch manager.uploadConnection {
+        case .unknown: return "未测试"
+        case .checking: return "测试中…"
+        case .ok(let detail): return "正常 · \(detail)"
+        case .failed(let detail): return "失败 · \(detail)"
+        }
+    }
+
+    private var connectionColor: Color {
+        switch manager.uploadConnection {
+        case .ok: return .green
+        case .failed: return .red
+        case .checking: return .orange
+        case .unknown: return .secondary
+        }
     }
 
     // MARK: - 控制

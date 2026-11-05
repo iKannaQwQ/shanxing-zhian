@@ -31,6 +31,12 @@ final class ARSessionManager: NSObject, ObservableObject {
     /// M4：打包统计。
     @Published private(set) var bundleStats = BundleStats()
 
+    /// M5：上传统计与连接状态（由 uploader 转发）。
+    @Published private(set) var uploadStats = FrameUploader.Stats()
+    @Published private(set) var uploadConnection = FrameUploader.Connection.unknown
+
+    let uploader = FrameUploader()
+
     let session = ARSession()
 
     /// 供界面导出打包结果。
@@ -98,7 +104,26 @@ final class ARSessionManager: NSObject, ObservableObject {
         session.delegateQueue = sessionQueue
         session.delegate = self
         captureInterval = 1.0 / Double(targetFPS)
+
+        uploader.$stats
+            .receive(on: RunLoop.main)
+            .assign(to: &$uploadStats)
+        uploader.$connection
+            .receive(on: RunLoop.main)
+            .assign(to: &$uploadConnection)
+
+        UploadSettings.shared.$host
+            .merge(with: UploadSettings.shared.$port)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.uploader.setIngestURL(UploadSettings.shared.ingestURL)
+            }
+            .store(in: &cancellables)
+        uploader.setIngestURL(UploadSettings.shared.ingestURL)
     }
+
+    private var cancellables = Set<AnyCancellable>()
+    private var firstFrameTimestamp: TimeInterval = 0
 
     // MARK: - 控制
 
@@ -139,6 +164,8 @@ final class ARSessionManager: NSObject, ObservableObject {
         sequence = 0
         producedBundles = 0
         bundleStore.reset()
+        firstFrameTimestamp = 0
+        uploader.reset()
         startedAt = CACurrentMediaTime()
         MemoryProbe.resetPeak()
 
@@ -217,6 +244,17 @@ final class ARSessionManager: NSObject, ObservableObject {
         lines.append("metadata \(b.metadataBytes) B   rgb \(b.jpegBytes) B   "
                      + "depth \(b.depthBytes) B   conf \(b.confidenceBytes) B   合计 \(b.totalBytes) B")
         if let err = b.error { lines.append("打包错误: \(err)") }
+
+        let u = uploadStats
+        lines.append("--- M5 上传 ---")
+        lines.append("服务器: \(UploadSettings.shared.ingestURL?.absoluteString ?? "未配置")")
+        lines.append("已发送: \(u.sent)   失败: \(u.failed)   队列: \(u.queued)/\(u.capacity)   "
+                     + "溢出丢弃: \(u.droppedOverflow)   质量门控丢弃: \(u.droppedQuality)   "
+                     + "无地址丢弃: \(u.droppedNoServer)")
+        lines.append("延迟: 最近 \(String(format: "%.0f", u.lastLatencyMs)) ms   "
+                     + "平均 \(String(format: "%.0f", u.avgLatencyMs)) ms   "
+                     + "最近HTTP \(u.lastStatusCode)")
+        if let err = u.lastError { lines.append("上传错误: \(err)") }
         if let err = lastError { lines.append("错误: \(err)") }
         return lines.joined(separator: "\n")
     }
@@ -315,6 +353,7 @@ extension ARSessionManager: ARSessionDelegate {
 
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
         frameIndex += 1
+        if firstFrameTimestamp == 0 { firstFrameTimestamp = frame.timestamp }
         updateNativeFPS(now: frame.timestamp)
 
         // 节流：按时间间隔抽帧。用 0.9 的容差，避免
@@ -366,6 +405,15 @@ extension ARSessionManager: ARSessionDelegate {
                                             pixelFormat: depthCopy.pixelFormat)
         }
 
+        // --- 上传质量门控（M5）---
+        // 会话开始约 1 s 内自动对焦尚未收敛、跟踪仍在初始化，
+        // 这期间的内参与位姿不可靠，不应进入后端。
+        var trackingNormal = false
+        if case .normal = frame.camera.trackingState { trackingNormal = true }
+        let warmedUp = frame.timestamp - firstFrameTimestamp >= 1.0
+        let uploadReady = trackingNormal && warmedUp
+        if !uploadReady { uploader.recordQualityDrop() }
+
         // --- M4：每一采集帧都打包（10 fps 的真实通路）---
         sequence += 1
         let frameSnapshot = makeSnapshot(frame: frame)
@@ -382,6 +430,9 @@ extension ARSessionManager: ARSessionDelegate {
                                                  confidence: confidenceForPack)
                 if let bundle = output.bundle {
                     self.bundleStore.save(bundle)
+                    if uploadReady {
+                        self.uploader.enqueue(bundle)
+                    }
                 }
                 // 预览每 5 帧刷新一次（2 Hz），避免 SwiftUI 过度重绘。
                 if frameSnapshot.sequence % 5 == 0, let image = output.image {

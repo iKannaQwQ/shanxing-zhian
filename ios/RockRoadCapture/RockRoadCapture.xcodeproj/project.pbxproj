@@ -27,6 +27,9 @@
 		AA00000000000000000000EA /* FrameBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000E7 /* FrameBundle.swift */; };
 		AA00000000000000000000EB /* FramePackager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000E8 /* FramePackager.swift */; };
 		AA00000000000000000000EC /* BundleStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000E9 /* BundleStore.swift */; };
+		AA00000000000000000000F1 /* UploadSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000EE /* UploadSettings.swift */; };
+		AA00000000000000000000F2 /* MultipartBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000EF /* MultipartBuilder.swift */; };
+		AA00000000000000000000F3 /* FrameUploader.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000F0 /* FrameUploader.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -51,6 +54,10 @@
 		AA00000000000000000000E7 /* FrameBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameBundle.swift; sourceTree = "<group>"; };
 		AA00000000000000000000E8 /* FramePackager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FramePackager.swift; sourceTree = "<group>"; };
 		AA00000000000000000000E9 /* BundleStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundleStore.swift; sourceTree = "<group>"; };
+		AA00000000000000000000ED /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		AA00000000000000000000EE /* UploadSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadSettings.swift; sourceTree = "<group>"; };
+		AA00000000000000000000EF /* MultipartBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultipartBuilder.swift; sourceTree = "<group>"; };
+		AA00000000000000000000F0 /* FrameUploader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameUploader.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -84,6 +91,7 @@
 			isa = PBXGroup;
 			children = (
 				AA00000000000000000000A7 /* App.swift */,
+				AA00000000000000000000ED /* Info.plist */,
 				AA00000000000000000000A6 /* Capability */,
 				AA00000000000000000000B4 /* Capture */,
 				AA00000000000000000000B3 /* Assets.xcassets */,
@@ -119,6 +127,9 @@
 				AA00000000000000000000E7 /* FrameBundle.swift */,
 				AA00000000000000000000E8 /* FramePackager.swift */,
 				AA00000000000000000000E9 /* BundleStore.swift */,
+				AA00000000000000000000EE /* UploadSettings.swift */,
+				AA00000000000000000000EF /* MultipartBuilder.swift */,
+				AA00000000000000000000F0 /* FrameUploader.swift */,
 			);
 			path = Capture;
 			sourceTree = "<group>";
@@ -211,6 +222,9 @@
 				AA00000000000000000000EA /* FrameBundle.swift in Sources */,
 				AA00000000000000000000EB /* FramePackager.swift in Sources */,
 				AA00000000000000000000EC /* BundleStore.swift in Sources */,
+				AA00000000000000000000F1 /* UploadSettings.swift in Sources */,
+				AA00000000000000000000F2 /* MultipartBuilder.swift in Sources */,
+				AA00000000000000000000F3 /* FrameUploader.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -338,16 +352,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 7PMKFVTFBC;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
-				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "用于采集道路 RGB 图像以进行落石检测；数据仅发送到本地局域网的开发机。";
-				INFOPLIST_KEY_UIFileSharingEnabled = YES;
-				INFOPLIST_KEY_UIFileSharingEnabled = YES;
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RockRoadCapture/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -371,16 +377,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 7PMKFVTFBC;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
-				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "用于采集道路 RGB 图像以进行落石检测；数据仅发送到本地局域网的开发机。";
-				INFOPLIST_KEY_UIFileSharingEnabled = YES;
-				INFOPLIST_KEY_UIFileSharingEnabled = YES;
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RockRoadCapture/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
