@@ -1,0 +1,234 @@
+{
+  "msg_type": "perception_report",
+  "schema_version": "1.0",
+  "frame_id": "0C065E7A-49A7-40EA-94E6-3147335740AF",
+  "timestamp": "2026-11-05T15:57:58.553157+00:00",
+  "timestamp_ns": 1793894278553156695,
+  "source": "LIVE",
+  "system_status": "DEGRADED",
+  "road_detected": true,
+  "road_mask_status": "OK",
+  "road": {
+    "coverage_ratio": 0.1165,
+    "confidence": 0.6412,
+    "component_count": 1,
+    "hole_ratio": 0.0,
+    "polygon": [
+      [
+        823.0,
+        802.0
+      ],
+      [
+        717.0,
+        725.0
+      ],
+      [
+        0.0,
+        783.0
+      ],
+      [
+        0.0,
+        953.0
+      ],
+      [
+        636.0,
+        937.0
+      ],
+      [
+        619.0,
+        875.0
+      ],
+      [
+        708.0,
+        865.0
+      ],
+      [
+        722.0,
+        892.0
+      ]
+    ],
+    "width_profile": [
+      {
+        "y": 30.0,
+        "left": -1.0,
+        "right": -1.0,
+        "width_px": 0.0,
+        "y0": 0.0,
+        "y1": 60.0
+      },
+      {
+        "y": 90.0,
+        "left": -1.0,
+        "right": -1.0,
+        "width_px": 0.0,
+        "y0": 60.0,
+        "y1": 120.0
+      },
+      {
+        "y": 150.0,
+        "left": -1.0,
+        "right": -1.0,
+        "width_px": 0.0,
+        "y0": 120.0,
+        "y1": 180.0
+      },
+      {
+        "y": 210.0,
+        "left": -1.0,
+        "right": -1.0,
+        "width_px": 0.0,
+        "y0": 180.0,
+        "y1": 240.0
+      },
+      {
+        "y": 270.0,
+        "left": -1.0,
+        "right": -1.0,
+        "width_px": 0.0,
+        "y0": 240.0,
+        "y1": 300.0
+      },
+      {
+        "y": 330.0,
+        "left": -1.0,
+        "right": -1.0,
+        "width_px": 0.0,
+        "y0": 300.0,
+        "y1": 360.0
+      },
+      {
+        "y": 390.0,
+        "left": -1.0,
+        "right": -1.0,
+        "width_px": 0.0,
+        "y0": 360.0,
+        "y1": 420.0
+      },
+      {
+        "y": 450.0,
+        "left": -1.0,
+        "right": -1.0,
+        "width_px": 0.0,
+        "y0": 420.0,
+        "y1": 480.0
+      },
+      {
+        "y": 510.0,
+        "left": -1.0,
+        "right": -1.0,
+        "width_px": 0.0,
+        "y0": 480.0,
+        "y1": 540.0
+      },
+      {
+        "y": 570.0,
+        "left": -1.0,
+        "right": -1.0,
+        "width_px": 0.0,
+        "y0": 540.0,
+        "y1": 600.0
+      },
+      {
+        "y": 630.0,
+        "left": -1.0,
+        "right": -1.0,
+        "width_px": 0.0,
+        "y0": 600.0,
+        "y1": 660.0
+      },
+      {
+        "y": 690.0,
+        "left": -1.0,
+        "right": -1.0,
+        "width_px": 0.0,
+        "y0": 660.0,
+        "y1": 720.0
+      },
+      {
+        "y": 750.0,
+        "left": 424.0,
+        "right": 756.0,
+        "width_px": 333.0,
+        "y0": 720.0,
+        "y1": 780.0
+      },
+      {
+        "y": 810.0,
+        "left": 0.0,
+        "right": 816.0,
+        "width_px": 817.0,
+        "y0": 780.0,
+        "y1": 840.0
+      },
+      {
+        "y": 870.0,
+        "left": 0.0,
+        "right": 686.0,
+        "width_px": 687.0,
+        "y0": 840.0,
+        "y1": 900.0
+      },
+      {
+        "y": 930.0,
+        "left": 0.0,
+        "right": 541.0,
+        "width_px": 542.0,
+        "y0": 900.0,
+        "y1": 960.0
+      }
+    ],
+    "centerline": [
+      [
+        590.0,
+        750.0
+      ],
+      [
+        408.0,
+        810.0
+      ],
+      [
+        343.0,
+        870.0
+      ],
+      [
+        270.5,
+        930.0
+      ]
+    ]
+  },
+  "rockfalls": [],
+  "depth": {
+    "usable": true,
+    "reasons": []
+  },
+  "metrics": {
+    "rock_count": 0,
+    "max_risk_level": "NONE",
+    "combined_remaining_width_px": null,
+    "combined_blocked": null,
+    "timings_ms": {
+      "road_ms": 430.23,
+      "rock_ms": 0.0,
+      "depth_ms": 0.04,
+      "depth_est_ms": 0.0,
+      "intrusion_ms": 0.0,
+      "total_ms": 430.28,
+      "perception_total": 55.2
+    }
+  },
+  "reasons": [
+    {
+      "code": "ROAD_HAS_GAPS",
+      "message": "12 个行带无道路（遮挡或断口）"
+    },
+    {
+      "code": "NO_ROCK_DETECTED",
+      "message": "未检出落石（不等于安全，受观测范围限制）"
+    },
+    {
+      "code": "ROCK_DETECTOR_UNAVAILABLE",
+      "message": "未部署落石检测器，落石类结论不可用"
+    }
+  ],
+  "disclaimer": "实验性辅助评估，不构成真实道路驾驶指令；未检测到落石不代表安全。"
+}

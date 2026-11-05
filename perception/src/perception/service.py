@@ -1,13 +1,12 @@
-"""推理管线：解码 → 感知 → 风险引擎。
+"""感知服务：解码原始帧 → 模型推理 → 产出 PerceptionReport。
 
-与 `scripts/live_pipeline.py` 的区别：这里的对象是被后台 worker 调用的，
-不直接服务 HTTP 请求，因此可以在一个常驻线程里跑，不会阻塞事件循环。
+这一层刻意**不包含风险判定**。判定属于后端的职责，感知只回答
+"画面里有什么、有多确定"。
+
+调用方：`scripts/ai_worker.py`（独立进程）。后端不导入本模块。
 """
 from __future__ import annotations
 
-import json
-import subprocess
-import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -15,46 +14,9 @@ from typing import Any
 import cv2
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[2]
-PERCEPTION_SRC = ROOT / "perception" / "src"
-ENGINE_BIN = ROOT / "risk_engine" / "build" / "rock_risk_cli"
-
-if str(PERCEPTION_SRC) not in sys.path:
-    sys.path.insert(0, str(PERCEPTION_SRC))
-
-from perception.depth.frame import Intrinsics, decode_depth  # noqa: E402
-from perception.pipeline import FrameInput, PerceptionPipeline  # noqa: E402
-from perception.road.orientation import rotation_cw  # noqa: E402
-
-
-class RiskEngine:
-    """常驻 C++ 引擎：每行一帧，避免每帧 20+ ms 的进程启动。"""
-
-    def __init__(self, binary: Path = ENGINE_BIN):
-        if not Path(binary).exists():
-            raise FileNotFoundError(
-                f"未找到风险引擎 {binary}，请先运行 scripts/build_risk_engine.sh")
-        self._process = subprocess.Popen([str(binary), "--stream"],
-                                         stdin=subprocess.PIPE,
-                                         stdout=subprocess.PIPE,
-                                         text=True, bufsize=1)
-
-    def assess(self, report: dict) -> dict:
-        assert self._process.stdin and self._process.stdout
-        self._process.stdin.write(json.dumps(report, ensure_ascii=False) + "\n")
-        self._process.stdin.flush()
-        line = self._process.stdout.readline()
-        if not line:
-            raise RuntimeError("风险引擎进程意外退出")
-        return json.loads(line)
-
-    def close(self) -> None:
-        try:
-            if self._process.stdin:
-                self._process.stdin.close()
-            self._process.terminate()
-        except Exception:  # noqa: BLE001
-            pass
+from .depth.frame import Intrinsics, decode_depth
+from .pipeline import FrameInput, PerceptionPipeline
+from .road.orientation import rotation_cw
 
 
 def decode_bundle(metadata: dict, rgb_bytes: bytes, depth_bytes: bytes,
@@ -114,51 +76,50 @@ def inject_synthetic_rock(report: dict, level: str) -> None:
     report["system_status"] = "OK"
 
 
-class InferencePipeline:
-    """串行推理。构造时加载模型，之后 `process_bundle` 可重复调用。"""
+class PerceptionService:
+    """加载一次模型，之后可反复调用。串行使用（不是线程安全的）。"""
 
     def __init__(self, device: str = "auto", rock_weights: str | None = None,
                  simulate_rock: str = "none", road_model: str = "yolop"):
         self.device = device
         self.simulate_rock = simulate_rock
 
-        # 沙盘微调之后把 ROAD_ROAD_MODEL 指向权重文件即可切换，不改代码
         if road_model and road_model != "yolop":
-            from perception.road.unet_segmenter import UNetRoadSegmenter
+            from .road.unet_segmenter import UNetRoadSegmenter
             self.segmenter = UNetRoadSegmenter(road_model, device=device)
-            print(f"[pipeline] 道路分割: U-Net ({road_model})", flush=True)
+            print(f"[perception] 道路分割: U-Net ({road_model})", flush=True)
         else:
-            from perception.road.segmenter import YolopRoadSegmenter
+            from .road.segmenter import YolopRoadSegmenter
             self.segmenter = YolopRoadSegmenter(device=device)
-            print("[pipeline] 道路分割: YOLOP", flush=True)
+            print("[perception] 道路分割: YOLOP", flush=True)
 
         detector = None
         if rock_weights:
-            from perception.rocks.detector import YoloRockDetector
+            from .rocks.detector import YoloRockDetector
             detector = YoloRockDetector(rock_weights, device=device)
+            print(f"[perception] 落石检测器: {rock_weights}", flush=True)
+        else:
+            print("[perception] 未部署落石检测器，落石类结论将不可用", flush=True)
         self.rock_detector = detector
-        self.pipeline = PerceptionPipeline(road_segmenter=self.segmenter, rock_detector=detector)
-        self.engine = RiskEngine()
 
-    def process_bundle(self, metadata: dict, rgb_bytes: bytes, depth_bytes: bytes,
-                       confidence_bytes: bytes | None) -> dict[str, Any]:
-        t0 = time.perf_counter()
-        device_orientation = metadata.get("capture", {}).get("device_orientation")
+        self.pipeline = PerceptionPipeline(road_segmenter=self.segmenter,
+                                           rock_detector=detector)
+
+    def process_bytes(self, metadata: dict, rgb_bytes: bytes, depth_bytes: bytes,
+                      confidence_bytes: bytes | None) -> dict[str, Any]:
+        started = time.perf_counter()
         rgb, depth, confidence, intrinsics = decode_bundle(
             metadata, rgb_bytes, depth_bytes, confidence_bytes)
-        decode_ms = (time.perf_counter() - t0) * 1000
 
-        # 设备竖持时 capturedImage 里的道路是横躺的，必须先转正再推理
-        rotation = rotation_cw(device_orientation)
-        self.segmenter.rotation_cw = rotation
+        # 手机竖持时 capturedImage 里的道路是横躺的，必须先转正再推理
+        self.segmenter.rotation_cw = rotation_cw(
+            metadata.get("capture", {}).get("device_orientation"))
 
-        t1 = time.perf_counter()
         report = self.pipeline.process(FrameInput(
             frame_id=metadata["frame_id"],
             timestamp_ns=metadata["ts_capture_ns"],
             rgb=rgb, depth=depth, intrinsics=intrinsics, confidence=confidence,
             rocks=None, source="LIVE"))
-        perception_ms = (time.perf_counter() - t1) * 1000
 
         if self.simulate_rock != "none":
             inject_synthetic_rock(report, self.simulate_rock)
@@ -168,18 +129,16 @@ class InferencePipeline:
                 "code": "ROCK_DETECTOR_UNAVAILABLE",
                 "message": "未部署落石检测器，落石类结论不可用"})
 
-        t2 = time.perf_counter()
-        status = self.engine.assess(report)
-        engine_ms = (time.perf_counter() - t2) * 1000
+        # 契约规定 metrics.timings_ms 是自由结构的数值表，耗时放这里
+        report["metrics"].setdefault("timings_ms", {})["perception_total"] = round(
+            (time.perf_counter() - started) * 1000, 1)
+        return report
 
-        return {
-            "road_status": status,
-            "perception": report,
-            "decode_ms": round(decode_ms, 2),
-            "perception_ms": round(perception_ms, 1),
-            "engine_ms": round(engine_ms, 2),
-            "total_ms": round((time.perf_counter() - t0) * 1000, 1),
-        }
-
-    def close(self) -> None:
-        self.engine.close()
+    def process_files(self, metadata: dict, rgb_path: str | Path,
+                      depth_path: str | Path,
+                      confidence_path: str | Path | None) -> dict[str, Any]:
+        rgb_bytes = Path(rgb_path).read_bytes()
+        depth_bytes = Path(depth_path).read_bytes()
+        conf_bytes = (Path(confidence_path).read_bytes()
+                      if confidence_path and Path(confidence_path).exists() else None)
+        return self.process_bytes(metadata, rgb_bytes, depth_bytes, conf_bytes)

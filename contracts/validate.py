@@ -28,6 +28,7 @@ SCHEMA_BY_MSG = {
     "perception_result": "perception_result.schema.json",
     "risk_assessment": "risk_assessment.schema.json",
     "road_status": "road_status.schema.json",
+    "perception_report": "perception_report.schema.json",
 }
 
 # ---- 策略阈值（与 docs/02-risk-model.md 保持一致；改动需同步）----

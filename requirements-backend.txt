@@ -1,0 +1,6 @@
+# 后端 API 进程：不含任何模型依赖
+# 安装: pip install -r requirements-backend.txt
+fastapi==0.162.0
+uvicorn[standard]==0.54.0
+python-multipart==0.0.33
+jsonschema==4.26.0

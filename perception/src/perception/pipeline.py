@@ -126,6 +126,7 @@ class PerceptionPipeline:
     def disconnected(self, frame_id: str, timestamp_ns: int) -> dict[str, Any]:
         """摄像头断开时也要给出一帧结构完整的输出，状态为 DISCONNECTED。"""
         return {
+            "msg_type": "perception_report",
             "schema_version": "1.0",
             "frame_id": frame_id,
             "timestamp": _iso(timestamp_ns),
@@ -186,6 +187,7 @@ class PerceptionPipeline:
     def _error_report(self, inp: FrameInput, status: str, code: str,
                       message: str) -> dict[str, Any]:
         return {
+            "msg_type": "perception_report",
             "schema_version": "1.0",
             "frame_id": inp.frame_id,
             "timestamp": _iso(inp.timestamp_ns),

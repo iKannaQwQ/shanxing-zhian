@@ -1,10 +1,10 @@
-"""后端单元测试：接收、后台处理、持久化、清理、广播。
+"""后端测试：接收 → 落盘 → 排队 → AI 回传 → 判定 → 查询。
 
-不加载真实模型：用 FakePipeline 顶替，测试只关心编排与持久化。
+不加载任何模型：AI 结果直接由测试按契约 POST 进来，
+这正是解耦之后后端应该被测试的样子。
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import time
 import uuid
@@ -13,45 +13,12 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.app.config import Settings
+from backend.app.config import ROOT, Settings
 from backend.app.db import Database, now_ns
 from backend.app.main import create_app
-from backend.app.ws import ConnectionManager
 
-
-class FakePipeline:
-    """返回固定 RoadStatus，避免测试依赖 YOLOP 与 C++ 引擎。"""
-
-    rock_detector = None
-    simulate_rock = "none"
-
-    def __init__(self) -> None:
-        self.calls = 0
-
-    def process_bundle(self, metadata, rgb, depth, confidence):  # noqa: ANN001
-        self.calls += 1
-        return {
-            "road_status": {
-                "overall_risk": "MEDIUM",
-                "system_status": "OK",
-                "passability": {"A_TO_B": "RESTRICTED", "B_TO_A": "RESTRICTED"},
-                "alternative_path": {"status": "UNKNOWN"},
-                "reasons": [{"code": "ROCK_PARTIAL_INTRUSION", "message": "x"}],
-            },
-            "perception": {
-                "road_detected": True,
-                "road_mask_status": "OK",
-                "road": {"coverage_ratio": 0.21},
-                "rockfalls": [{"rock_id": "R1"}],
-            },
-            "decode_ms": 1.0,
-            "perception_ms": 10.0,
-            "engine_ms": 0.3,
-            "total_ms": 12.3,
-        }
-
-    def close(self) -> None:
-        pass
+SAMPLE_REPORT = ROOT / "contracts" / "samples" / "perception_report" / \
+    "degraded_no_detector.json"
 
 
 def make_bundle(seq: int = 1, rgb_size: int = 1024):
@@ -66,7 +33,8 @@ def make_bundle(seq: int = 1, rgb_size: int = 1024):
         "ts_capture_ns": time.time_ns(),
         "capture": {"width": 1280, "height": 960, "bytes": rgb_size,
                     "format": "jpeg", "jpeg_quality": 0.72,
-                    "orientation": "landscape_right"},
+                    "orientation": "landscape_right",
+                    "device_orientation": "landscape_right"},
         "intrinsics": {"fx": 980.0, "fy": 980.0, "cx": 640.0, "cy": 480.0,
                        "reference_width": 1280, "reference_height": 960},
         "depth": {"width": 256, "height": 192, "encoding": "float32_m",
@@ -82,58 +50,93 @@ def make_bundle(seq: int = 1, rgb_size: int = 1024):
 
 def post_frame(client: TestClient, seq: int = 1, rgb_size: int = 1024):
     metadata, (rgb, depth, conf) = make_bundle(seq, rgb_size)
-    return client.post(
+    response = client.post(
         "/api/v1/ingest/frame",
         data={"meta": json.dumps(metadata)},
         files={"rgb": ("rgb.jpg", rgb, "image/jpeg"),
                "depth": ("depth.bin", depth, "application/octet-stream"),
                "confidence": ("confidence.bin", conf, "application/octet-stream")})
+    return response, metadata
 
 
-def wait_until(predicate, timeout: float = 5.0):
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        if predicate():
-            return True
-        time.sleep(0.05)
-    return False
+def post_perception(client: TestClient, frame_id: str, report: dict | None = None):
+    payload = dict(report or json.loads(SAMPLE_REPORT.read_text(encoding="utf-8")))
+    payload["frame_id"] = frame_id
+    return client.post("/api/v1/ingest/perception",
+                       json={"frame_id": frame_id, "perception": payload})
 
 
 @pytest.fixture
 def client(tmp_path: Path):
-    settings = Settings(db_path=tmp_path / "test.db", queue_capacity=4)
-    app = create_app(settings, pipeline_factory=lambda s: FakePipeline())
+    settings = Settings(db_path=tmp_path / "test.db",
+                        artifacts_dir=tmp_path / "artifacts")
+    app = create_app(settings)
     with TestClient(app) as test_client:
         yield test_client
 
 
-def test_health_ok(client):
+def test_health_reports_external_inference(client):
     body = client.get("/api/v1/health").json()
     assert body["status"] == "ok"
-    assert body["service"] == "mountain-road-backend"
-    assert body["rock_detector"] is False
+    assert body["inference"] == "external"
 
 
-def test_ingest_returns_202_and_gets_processed(client):
-    response = post_frame(client)
+def test_ingest_stores_files_and_queues(client, tmp_path):
+    response, metadata = post_frame(client)
     assert response.status_code == 202
-    body = response.json()
-    assert body["accepted"] is True
+    assert response.json()["status"] == "stored"
 
-    def processed() -> bool:
-        return client.get("/api/v1/status").json()["counters"]["processed"] >= 1
-
-    assert wait_until(processed)
+    directory = tmp_path / "artifacts" / metadata["frame_id"]
+    assert (directory / "rgb.jpg").exists()
+    assert (directory / "depth.bin").stat().st_size == 256 * 192 * 4
+    assert (directory / "confidence.bin").exists()
+    assert (directory / "metadata.json").exists()
 
     status = client.get("/api/v1/status").json()
-    assert status["latest"]["overall_risk"] == "MEDIUM"
-    assert status["latest"]["a_to_b"] == "RESTRICTED"
-    assert status["db"]["assessments"] == 1
+    assert status["queue"]["depth"] == 1
+    assert status["counters"]["queued"] == 1
+
+
+def test_pending_returns_paths_not_binary(client):
+    _, metadata = post_frame(client)
+    body = client.get("/api/v1/frames/pending?limit=4").json()
+    assert body["count"] == 1
+    item = body["items"][0]
+    assert item["frame_id"] == metadata["frame_id"]
+    assert item["metadata"]["frame_id"] == metadata["frame_id"]
+    assert Path(item["rgb_path"]).exists()
+    assert "rgb" not in item  # 不返回二进制
+
+
+def test_perception_ingest_runs_engine_and_marks_processed(client):
+    _, metadata = post_frame(client)
+    response = post_perception(client, metadata["frame_id"])
+    assert response.status_code == 202
+    body = response.json()
+    assert body["overall_risk"] == "UNKNOWN"      # 无落石检测器 -> 不能给 SAFE
+    assert body["system_status"] == "DEGRADED"
+
+    status = client.get("/api/v1/status").json()
+    assert status["counters"]["processed"] == 1
+    assert status["queue"]["depth"] == 0
+    assert status["latest"]["frame_id"] == metadata["frame_id"]
+
+
+def test_duplicate_perception_is_rejected(client):
+    _, metadata = post_frame(client)
+    assert post_perception(client, metadata["frame_id"]).status_code == 202
+    again = post_perception(client, metadata["frame_id"])
+    assert again.json()["code"] == "ALREADY_PROCESSED"
+
+
+def test_perception_for_unknown_frame(client):
+    response = post_perception(client, "does-not-exist")
+    assert response.status_code == 404
+    assert response.json()["code"] == "UNKNOWN_FRAME"
 
 
 def test_rejects_size_mismatch(client):
-    metadata, (rgb, depth, conf) = make_bundle()
-    # 声称的 rgb 字节数与实际不符
+    metadata, (rgb, depth, _conf) = make_bundle()
     metadata["capture"]["bytes"] = len(rgb) + 10
     response = client.post(
         "/api/v1/ingest/frame",
@@ -156,85 +159,60 @@ def test_rejects_missing_field(client):
     assert response.json()["code"] == "MISSING_FIELD"
 
 
-def test_risk_change_event_recorded(client):
+def test_artifact_download(client):
+    _, metadata = post_frame(client)
+    response = client.get(f"/api/v1/frames/{metadata['frame_id']}/rgb")
+    assert response.status_code == 200
+    assert response.content.startswith(b"\xff")
+
+    missing = client.get(f"/api/v1/frames/{metadata['frame_id']}/nope")
+    assert missing.status_code == 404
+
+
+def test_status_reports_staleness(client):
+    _, metadata = post_frame(client)
+    post_perception(client, metadata["frame_id"])
+    status = client.get("/api/v1/status").json()
+    assert status["age_ms"] is not None and status["age_ms"] >= 0
+    assert status["stale"] is False
+    assert status["stale_after_ms"] > 0
+
+
+def test_device_online_after_upload(client):
     post_frame(client)
-    assert wait_until(
-        lambda: client.get("/api/v1/status").json()["counters"]["processed"] >= 1)
+    devices = client.get("/api/v1/devices").json()["items"]
+    assert len(devices) == 1
+    assert devices[0]["online"] is True
+
+
+def test_heartbeat_thermal_event(client):
+    client.post("/api/v1/devices/heartbeat",
+                json={"device_id": "dev-1",
+                      "meta": {"thermal": "过热", "target_fps": 5, "jpeg_quality": 0.65}})
     events = client.get("/api/v1/events").json()["items"]
-    assert any(e["code"] == "RISK_CHANGED" for e in events)
-    assert events[0]["level"] == "WARNING"
+    assert any(event["code"] == "DEVICE_THERMAL_DEGRADED" for event in events)
 
 
-def test_client_frame_gap_event(client):
-    metadata, (rgb, depth, conf) = make_bundle(seq=7)
-    metadata["delivery"]["dropped_since_last"] = 12
-    client.post("/api/v1/ingest/frame",
-                data={"meta": json.dumps(metadata)},
-                files={"rgb": ("rgb.jpg", rgb, "image/jpeg"),
-                       "depth": ("depth.bin", depth, "application/octet-stream"),
-                       "confidence": ("confidence.bin", conf, "application/octet-stream")})
-    assert wait_until(
-        lambda: client.get("/api/v1/status").json()["counters"]["processed"] >= 1)
-    events = client.get("/api/v1/events").json()["items"]
-    gap = [e for e in events if e["code"] == "CLIENT_FRAME_GAP"]
-    assert gap and "12" in gap[0]["message"]
-
-
-def test_assessments_pagination(client):
-    for seq in range(3):
-        post_frame(client, seq=seq)
-    assert wait_until(
-        lambda: client.get("/api/v1/status").json()["counters"]["processed"] >= 3)
-
-    first = client.get("/api/v1/assessments?limit=2").json()
-    assert len(first["items"]) == 2
-    second = client.get("/api/v1/assessments?limit=2&offset=2").json()
-    assert len(second["items"]) == 1
-
-
-def test_retention_purges_old_rows(tmp_path):
-    db = Database(tmp_path / "retain.db")
+def test_frame_expiry(tmp_path):
+    db = Database(tmp_path / "expire.db")
     now = now_ns()
-    base = {
-        "device_id": "d", "session_id": "s", "seq": 1, "ts_capture_ns": now,
+    db.insert_frame({
+        "frame_id": "old", "device_id": "d", "session_id": "s", "seq": 1,
+        "ts_capture_ns": now, "ts_received_ns": now - 10**12,
         "width": 1, "height": 1, "jpeg_bytes": 1, "depth_bytes": 1,
-        "confidence_bytes": 1, "dropped_since_last": 0, "status": "done", "error": None,
-    }
-    db.insert_frame({**base, "frame_id": "old", "ts_received_ns": now - 10**12})
-    db.insert_frame({**base, "frame_id": "new", "ts_received_ns": now})
-    for fid, ts in (("old", now - 10**12), ("new", now)):
-        db.insert_assessment({
-            "frame_id": fid, "device_id": "d", "ts_assessed_ns": ts,
-            "overall_risk": "LOW", "system_status": "OK", "a_to_b": "PASSABLE",
-            "b_to_a": "PASSABLE", "alternative_status": "NOT_EVALUATED",
-            "road_detected": 1, "road_status": "OK", "road_coverage": 0.2,
-            "rock_count": 0, "processing_ms": 5.0, "json": "{}",
-        })
-
-    removed = db.purge_older_than(now - 10**11)
-    assert removed["frames"] == 1
-    assert removed["assessments"] == 1
-    assert db.stats()["frames"] == 1
+        "confidence_bytes": 1, "dropped_since_last": 0, "status": "stored",
+        "error": None, "artifact_dir": "", "rgb_path": "", "depth_path": "",
+        "confidence_path": "",
+    })
+    expired = db.expire_stale_frames(now - 10**11)
+    assert expired == ["old"]
+    assert db.frame("old")["status"] == "expired"
     db.close()
 
 
-def test_hub_broadcast_drops_dead_clients():
-    class FakeWs:
-        def __init__(self, alive: bool):
-            self.alive = alive
-            self.received = []
-
-        async def send_text(self, text: str):
-            if not self.alive:
-                raise RuntimeError("closed")
-            self.received.append(text)
-
-    hub = ConnectionManager()
-    good, bad = FakeWs(True), FakeWs(False)
-    hub.register(good)  # type: ignore[arg-type]
-    hub.register(bad)   # type: ignore[arg-type]
-
-    sent = asyncio.run(hub.broadcast({"type": "assessment", "overall_risk": "HIGH"}))
-    assert sent == 1
-    assert hub.client_count == 1
-    assert json.loads(good.received[0])["overall_risk"] == "HIGH"
+def test_backend_does_not_import_perception():
+    """解耦的硬性检查：后端源码不得引用感知库。"""
+    for path in (ROOT / "backend" / "app").rglob("*.py"):
+        text = path.read_text(encoding="utf-8")
+        assert "from perception" not in text, f"{path.name} 导入了感知库"
+        assert "import perception" not in text, f"{path.name} 导入了感知库"

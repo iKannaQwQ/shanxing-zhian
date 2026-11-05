@@ -37,11 +37,19 @@ export interface DeviceRow {
   last_seen_ns: number
   frames: number
   last_status: string | null
+  online?: boolean
+  silent_ms?: number
+  thermal?: string | null
+  target_fps?: number | null
 }
 
 export interface StatusPayload {
   ready: boolean
+  server_ns?: number
   latest: AssessmentRow | null
+  age_ms?: number | null
+  stale?: boolean
+  stale_after_ms?: number
   queue: { depth: number; capacity: number }
   counters: { queued: number; processed: number; failed: number; dropped: number }
   db: { frames: number; processed: number; failed: number; dropped: number; assessments: number; events: number }

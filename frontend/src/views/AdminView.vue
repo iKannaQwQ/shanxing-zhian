@@ -189,6 +189,13 @@ function timeText(ns: number): string {
       <el-tab-pane label="设备" name="devices">
         <el-table :data="devices" size="small" stripe style="width: 100%">
           <el-table-column prop="device_id" label="设备" min-width="200" />
+          <el-table-column label="状态" width="100">
+            <template #default="{ row }">
+              <el-tag :type="row.online ? 'success' : 'info'" size="small">
+                {{ row.online ? '在线' : '离线' }}
+              </el-tag>
+            </template>
+          </el-table-column>
           <el-table-column prop="frames" label="帧数" width="100" />
           <el-table-column prop="last_status" label="最近状态" width="150" />
           <el-table-column label="首次出现" width="180">

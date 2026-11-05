@@ -188,6 +188,7 @@ def report_to_dict(report: FrameReport) -> dict[str, Any]:
         return v
 
     return {
+        "msg_type": "perception_report",
         "schema_version": report.schema_version,
         "frame_id": report.frame_id,
         "timestamp": _iso(report.timestamp_ns),

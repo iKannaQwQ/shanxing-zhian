@@ -15,7 +15,7 @@
 | P4 | 沙盘训练管线 | ✅ 完成，合成数据冒烟通过（见 [沙盘管线](docs/09-sandbox-pipeline.md)） |
 | P4 | 感知模块 M1–M7 | 🟡 代码完成、49 项测试通过，**模型未在沙盘验证**（见 [感知模块](docs/03-perception.md)） |
 | P5 | 融合 + 全链路 | ⬜ 未开始 |
-| P6 | 后端（FastAPI+SQLite+WS） | ✅ 完成，9 项测试（见 [后端](docs/07-backend.md)） |
+| P6 | 后端（FastAPI+SQLite+WS） | ✅ 完成，14 项测试；推理已解耦（见 [后端 API](docs/10-backend-api.md)） |
 | P7 | 前端（实时页 + 管理后台） | ✅ 构建通过，**未做浏览器验证**（见 [前端](docs/08-frontend.md)） |
 | P8 | Windows 部署与实机验证 | ⬜ 未开始 |
 

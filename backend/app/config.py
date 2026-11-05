@@ -37,7 +37,14 @@ class Settings:
     road_model: str = _env("ROAD_ROAD_MODEL", "yolop")
     simulate_rock: str = _env("ROAD_SIMULATE_ROCK", "none")
 
-    # 是否把原始帧落盘（默认关闭：10fps 会产生 4MB/s）
-    save_frames: bool = _env("ROAD_SAVE_FRAMES", "0") == "1"
-    frames_dir: Path = field(
-        default_factory=lambda: Path(_env("ROAD_FRAMES_DIR", str(ROOT / "data" / "incoming"))))
+    # 原始帧落盘目录：数据库只存路径，二进制进文件
+    artifacts_dir: Path = field(
+        default_factory=lambda: Path(_env("ROAD_ARTIFACTS_DIR",
+                                          str(ROOT / "data" / "artifacts"))))
+
+    # 设备多久没有心跳/上传就算离线
+    device_offline_seconds: float = float(_env("ROAD_DEVICE_OFFLINE_S", "15"))
+    # 帧等待 AI 结果多久算过期（AI 挂了不能让帧永远挂着）
+    frame_expire_seconds: float = float(_env("ROAD_FRAME_EXPIRE_S", "20"))
+    # 最新判定多久算数据过期
+    stale_after_seconds: float = float(_env("ROAD_STALE_AFTER_S", "5"))

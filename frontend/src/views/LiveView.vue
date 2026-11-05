@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { api, type AssessmentMessage, type EventRow, type StatusPayload } from '../api/client'
 import { rowToMessage } from '../api/mappers'
 import { useStatusStream } from '../composables/useStatusStream'
@@ -10,6 +10,8 @@ const status = ref<StatusPayload | null>(null)
 const events = ref<EventRow[]>([])
 const fallback = ref<AssessmentMessage | null>(null)
 const loadError = ref<string | null>(null)
+const stale = ref(false)
+const ageMs = ref<number | null>(null)
 let timer: number | null = null
 
 const RISK_TEXT: Record<string, string> = {
@@ -47,6 +49,9 @@ async function refresh() {
     const [snapshot, eventPage] = await Promise.all([api.status(), api.events(6)])
     status.value = snapshot
     events.value = eventPage.items
+    // 服务端明确告诉我们数据是否过期；WebSocket 来了新判定就会被覆盖
+    stale.value = Boolean(snapshot.stale)
+    ageMs.value = snapshot.age_ms ?? null
     fallback.value = snapshot.latest ? rowToMessage(snapshot.latest as unknown as Record<string, unknown>) : null
     loadError.value = null
   } catch (error) {
@@ -60,6 +65,13 @@ onMounted(() => {
 })
 onUnmounted(() => {
   if (timer !== null) window.clearInterval(timer)
+})
+
+watch(last, () => {
+  if (last.value) {
+    stale.value = false
+    ageMs.value = 0
+  }
 })
 
 const current = computed<AssessmentMessage | null>(() => last.value ?? fallback.value)
@@ -110,6 +122,17 @@ function eventClass(level: string): string {
       show-icon
       :title="`后端不可达：${loadError}`"
       description="请确认后端已启动（bash scripts/start_backend.sh），且页面通过正确的地址访问。"
+      style="margin-bottom: 14px"
+    />
+
+    <el-alert
+      v-if="stale"
+      type="warning"
+      :closable="false"
+      show-icon
+      title="数据已过期"
+      :description="`最近一次判定在 ${ageMs != null ? (ageMs / 1000).toFixed(1) : '?'} 秒前，`
+        + '当前没有新的采集数据。下方显示的是历史结果，不代表现在的路况。'"
       style="margin-bottom: 14px"
     />
 
