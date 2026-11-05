@@ -2,7 +2,9 @@
 
 > **状态：按 M1–M9 分阶段重建中。**
 > 已完成：M1（工程结构）、M2（用户端首页）、M3（运行总览）、M4（实时监控）、
-> M5（事件管理 + 历史数据）。M6 设备管理尚未开始，侧边栏中标为「待开发」。
+> M5（事件管理 + 历史数据）、M6（设备管理）。
+> M7/M8（接入 REST 与 WebSocket）自 M2 起即按真实接口开发，无需单独"接入"阶段。
+> 仅剩 M9：移动端与 Windows 浏览器的实际验证。
 >
 > 目录结构：
 > ```
@@ -12,7 +14,7 @@
 > ├── layouts/      UserLayout、AdminLayout
 > ├── views/user/   HomeView（M2）
 > └── views/admin/  OverviewView（M3）、MonitorView（M4）、
->                   EventsView / HistoryView（M5）
+>                   EventsView / HistoryView（M5）、DevicesView（M6）
 > ```
 >
 > **枚举词表**：产品侧通行状态为 PASSABLE / PARTIALLY_BLOCKED / BLOCKED / UNKNOWN，

@@ -97,11 +97,11 @@ New-NetFirewallRule -DisplayName "MountainRoad 8000" -Direction Inbound `
 | GET | `/api/v1/status` | 总览：最新判定、是否过期、队列、设备、存储占用 |
 | GET | `/api/v1/assessments?limit&offset` | 历史判定（分页） |
 | GET | `/api/v1/events?limit` | 事件流水 |
-| GET | `/api/v1/devices` | 设备列表（含 `online` / `silent_ms`） |
+| GET | `/api/v1/devices` | 设备列表（含 `online` / `silent_ms` / `fps` / `latency_ms` / `dropped_recent`） |
 | GET | `/api/v1/rock-events?limit&offset&status` | 落石事件（含备注与处理状态） |
 | PATCH | `/api/v1/rock-events/{id}` | 更新备注 / 处理状态 |
 | GET | `/api/v1/stats/timeline?minutes&buckets` | 分桶风险时间轴 |
-| POST | `/api/v1/devices/heartbeat` | 设备心跳 |
+| POST | `/api/v1/devices/heartbeat` | 设备心跳（热状态、目标 FPS、延迟、丢帧） |
 | POST | `/api/v1/ingest/frame` | 上传帧（multipart，**202**） |
 | GET | `/api/v1/frames/pending?limit` | **AI worker 专用**，拉待处理帧 |
 | GET | `/api/v1/frames/{id}` | 单帧元数据 |
@@ -218,6 +218,15 @@ GET /api/v1/status
 | 表 | 主要字段 |
 |---|---|
 | `devices` | `device_id` `first_seen_ns` `last_seen_ns` `last_heartbeat_ns` `frames` `thermal` `target_fps` `meta_json` |
+
+设备统计的口径：
+
+| 字段 | 来源 | 含义 |
+|---|---|---|
+| `fps` | 服务端统计 | 最近 10 秒**到达**的帧数 ÷ 10（不是采集帧率） |
+| `latency_ms` | 心跳 `meta.latency_ms` | 采集端实测的单帧上传耗时；未上报为 `null` |
+| `dropped_recent` | `frames.dropped_since_last` 求和 | 近 5 分钟客户端队列溢出累计 |
+| `silent_ms` | `last_heartbeat_ns` / `last_seen_ns` | 距最后一次数据的时间 |
 | `frames` | `frame_id` `device_id` `ts_capture_ns` `ts_received_ns` `processed_ns` `width` `height` `jpeg_bytes` `depth_bytes` `status` `error` `artifact_dir` `rgb_path` `depth_path` `confidence_path` |
 | `assessments` | `frame_id` `ts_assessed_ns` `overall_risk` `system_status` `a_to_b` `b_to_a` `alternative_status` `road_coverage` `rock_count` `processing_ms` `json` |
 | `events` | `ts_ns` `frame_id` `device_id` `level` `code` `message` |

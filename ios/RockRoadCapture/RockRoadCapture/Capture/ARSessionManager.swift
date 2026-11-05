@@ -87,6 +87,7 @@ final class ARSessionManager: NSObject, ObservableObject {
     private var thermalTransitions = 0
     private var thermalTimer: Timer?
     private var startedEpoch: TimeInterval = 0
+    private var thermalTicks = 0
     private var packWaitMs: Double = 0
     private var packBuildMs: Double = 0
     private var skippedByThrottle = 0
@@ -383,6 +384,12 @@ final class ARSessionManager: NSObject, ObservableObject {
     }
 
     private func evaluateThermal() {
+        // 每 10 秒补一次心跳，让后台能看到延迟与丢帧（不需要等热状态变化）
+        thermalTicks += 1
+        if thermalTicks % 5 == 0 {
+            DispatchQueue.main.async { self.sendHeartbeat(reason: "periodic") }
+        }
+
         let setting = ThermalPolicy.setting(for: ProcessInfo.processInfo.thermalState)
         sessionQueue.async {
             guard setting.label != self.thermalLabel else { return }
@@ -406,6 +413,12 @@ final class ARSessionManager: NSObject, ObservableObject {
                 "jpeg_quality": currentQuality,
                 "reason": reason,
                 "uptime_s": Int(Date().timeIntervalSince1970 - startedEpoch),
+                "latency_ms": uploader.stats.lastLatencyMs,
+                "avg_latency_ms": uploader.stats.avgLatencyMs,
+                "sent": uploader.stats.sent,
+                "failed": uploader.stats.failed,
+                "dropped_overflow": uploader.stats.droppedOverflow,
+                "queue": uploader.stats.queued,
             ],
         ]
         uploader.sendHeartbeat(base: base, payload: payload)

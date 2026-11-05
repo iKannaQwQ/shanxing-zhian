@@ -56,6 +56,11 @@ export interface DeviceRow {
   thermal?: string | null
   target_fps?: number | null
   last_status?: string | null
+  fps?: number
+  last_frame_ns?: number | null
+  dropped_recent?: number
+  latency_ms?: number | null
+  meta?: Record<string, unknown>
 }
 
 export interface StatusPayload {
@@ -65,6 +70,7 @@ export interface StatusPayload {
   age_ms?: number | null
   stale?: boolean
   stale_after_ms?: number
+  device_offline_s?: number
   queue: { depth: number; capacity: number | null }
   counters: { queued: number; processed: number; failed: number; dropped: number }
   devices?: DeviceRow[]

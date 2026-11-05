@@ -187,6 +187,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "age_ms": round(age_ms) if age_ms is not None else None,
             "stale": age_ms is not None and age_ms > settings.stale_after_seconds * 1000,
             "stale_after_ms": int(settings.stale_after_seconds * 1000),
+            "device_offline_s": settings.device_offline_seconds,
             "queue": {"depth": counters["queued"], "capacity": None},
             "counters": counters,
             "devices": device_list,

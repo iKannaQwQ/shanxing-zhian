@@ -283,13 +283,50 @@ class Database:
             self._conn.commit()
         return ids
 
-    def device_online(self, offline_after_ns: int) -> list[dict]:
+    def device_frame_stats(self, since_ns: int) -> list[dict]:
+        with self._lock:
+            rows = self._conn.execute(
+                """SELECT device_id, COUNT(*) AS c, MAX(ts_received_ns) AS last
+                   FROM frames WHERE ts_received_ns >= ?
+                   GROUP BY device_id""", (since_ns,)).fetchall()
+        return [dict(r) for r in rows]
+
+    def device_drop_stats(self, since_ns: int) -> list[dict]:
+        with self._lock:
+            rows = self._conn.execute(
+                """SELECT device_id, SUM(dropped_since_last) AS d
+                   FROM frames WHERE ts_received_ns >= ?
+                   GROUP BY device_id""", (since_ns,)).fetchall()
+        return [dict(r) for r in rows]
+
+    def device_online(self, offline_after_ns: int,
+                      fps_window_s: float = 10.0,
+                      drop_window_s: float = 300.0) -> list[dict]:
         now = now_ns()
         devices = self.list_devices()
+        recent = {r["device_id"]: r for r in
+                  self.device_frame_stats(now - int(fps_window_s * 1e9))}
+        drops = {r["device_id"]: r for r in
+                 self.device_drop_stats(now - int(drop_window_s * 1e9))}
+
         for device in devices:
             last = device.get("last_heartbeat_ns") or device["last_seen_ns"]
             device["online"] = (now - last) < offline_after_ns
             device["silent_ms"] = int((now - last) / 1_000_000)
+
+            stats = recent.get(device["device_id"], {})
+            device["fps"] = round(stats.get("c", 0) / fps_window_s, 2)
+            device["last_frame_ns"] = stats.get("last")
+            device["dropped_recent"] = int(drops.get(device["device_id"], {}).get("d") or 0)
+
+            meta = {}
+            if device.get("meta_json"):
+                try:
+                    meta = json.loads(device["meta_json"])
+                except json.JSONDecodeError:
+                    meta = {}
+            device["meta"] = meta
+            device["latency_ms"] = meta.get("latency_ms")
         return devices
 
     def all_frame_ids(self) -> list[str]:
