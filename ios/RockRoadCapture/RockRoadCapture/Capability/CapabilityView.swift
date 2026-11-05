@@ -1,10 +1,12 @@
 import AVFoundation
 import SwiftUI
+import UIKit
 
 /// M1 界面：设备能力检查。
 struct CapabilityView: View {
 
     @StateObject private var checker = CapabilityChecker()
+    @State private var copied = false
 
     var body: some View {
         NavigationStack {
@@ -43,6 +45,18 @@ struct CapabilityView: View {
                         checker.refresh()
                     } label: {
                         Label("重新检测", systemImage: "arrow.clockwise")
+                    }
+
+                    Button {
+                        UIPasteboard.general.string = checker.diagnosticText()
+                        copied = true
+                        Task {
+                            try? await Task.sleep(nanoseconds: 1_500_000_000)
+                            copied = false
+                        }
+                    } label: {
+                        Label(copied ? "已复制到剪贴板" : "复制诊断信息",
+                              systemImage: copied ? "checkmark" : "doc.on.doc")
                     }
                 } footer: {
                     Text("M1 仅做能力检查，不启动相机、不采集数据。")

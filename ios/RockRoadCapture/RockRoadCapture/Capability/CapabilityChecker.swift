@@ -102,6 +102,29 @@ final class CapabilityChecker: ObservableObject {
         lastCheckedAt = Date()
     }
 
+    /// 生成纯文本诊断块，便于用户一键复制后反馈。
+    ///
+    /// 刻意输出「原始值 + 结论」而不是只有结论：
+    /// 排查问题时需要知道 supportsFrameSemantics 到底返回了什么。
+    func diagnosticText() -> String {
+        var lines: [String] = []
+        lines.append("MountainRoadCapture / M1 能力检查")
+        lines.append("时间: \(ISO8601DateFormatter().string(from: Date()))")
+        lines.append("结论: \(canProceed ? "可以进入 M2" : "不满足采集前提")")
+        lines.append("---")
+        for item in items {
+            let mark: String
+            switch item.status {
+            case .ok: mark = "OK  "
+            case .fail: mark = "FAIL"
+            case .warning: mark = "WARN"
+            case .info: mark = "INFO"
+            }
+            lines.append("\(mark) \(item.title): \(item.detail)")
+        }
+        return lines.joined(separator: "\n")
+    }
+
     /// 请求相机权限。返回后自动刷新一次。
     func requestCameraAccess() async {
         guard AVCaptureDevice.authorizationStatus(for: .video) == .notDetermined else {
