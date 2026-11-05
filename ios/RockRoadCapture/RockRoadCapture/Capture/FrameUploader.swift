@@ -35,8 +35,22 @@ final class FrameUploader: ObservableObject {
         var lastError: String?
     }
 
+    /// 端到端回显：服务端返回的 RoadStatus 摘要。
+    struct RiskSnapshot: Equatable {
+        var overallRisk: String = "-"
+        var systemStatus: String = "-"
+        var passAToB: String = "-"
+        var passBToA: String = "-"
+        var processingMs: Double = 0
+        var reasons: [String] = []
+        var error: String?
+        var receivedAt: Date?
+        var frameCount: Int = 0
+    }
+
     @Published private(set) var stats = Stats()
     @Published private(set) var connection: Connection = .unknown
+    @Published private(set) var lastResult = RiskSnapshot()
 
     private struct Item {
         var bundle: FrameBundle
@@ -160,6 +174,15 @@ final class FrameUploader: ObservableObject {
                     self.counters.lastLatencyMs = latency
                     self.counters.lastUploadBytes = item.bundle.totalBytes
                     self.recordLatency(latency)
+                    self.publishResult(from: data)
+                    self.publish()
+                    self.pump()
+                } else if (400..<500).contains(status) {
+                    // 4xx 是请求本身的问题，重试没有意义
+                    self.counters.failed += 1
+                    self.counters.lastStatusCode = status
+                    self.counters.lastError = "HTTP \(status) \(bodyText)"
+                    self.publishResult(error: "HTTP \(status) \(bodyText)")
                     self.publish()
                     self.pump()
                 } else {
@@ -187,6 +210,48 @@ final class FrameUploader: ObservableObject {
         let backoff = [0.2, 0.5, 1.0][min(nextAttempt - 1, 2)]
         stateQueue.asyncAfter(deadline: .now() + backoff) { self.pump() }
         return true
+    }
+
+    /// 解析服务端返回的 road_status，派发到主线程更新界面。
+    private func publishResult(from data: Data?) {
+        var snapshot = RiskSnapshot()
+        snapshot.frameCount = counters.sent
+        snapshot.receivedAt = Date()
+        if let data,
+           let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            snapshot.processingMs = (root["processing_ms"] as? Double) ?? 0
+            if let rs = root["road_status"] as? [String: Any] {
+                snapshot.overallRisk = (rs["overall_risk"] as? String) ?? "-"
+                snapshot.systemStatus = (rs["system_status"] as? String) ?? "-"
+                if let pass = rs["passability"] as? [String: Any] {
+                    snapshot.passAToB = (pass["A_TO_B"] as? String) ?? "-"
+                    snapshot.passBToA = (pass["B_TO_A"] as? String) ?? "-"
+                }
+                if let reasons = rs["reasons"] as? [[String: Any]] {
+                    snapshot.reasons = Array(reasons.compactMap { $0["code"] as? String }.prefix(3))
+                }
+            } else {
+                snapshot.error = "响应缺少 road_status"
+            }
+        } else {
+            snapshot.error = "响应不是合法 JSON"
+        }
+        let value = snapshot
+        DispatchQueue.main.async { self.lastResult = value }
+    }
+
+    private func publishResult(error: String) {
+        var snapshot = lastResultSnapshotForError()
+        snapshot.error = error
+        let value = snapshot
+        DispatchQueue.main.async { self.lastResult = value }
+    }
+
+    private func lastResultSnapshotForError() -> RiskSnapshot {
+        var snapshot = RiskSnapshot()
+        snapshot.frameCount = counters.sent
+        snapshot.receivedAt = Date()
+        return snapshot
     }
 
     private func recordLatency(_ value: Double) {

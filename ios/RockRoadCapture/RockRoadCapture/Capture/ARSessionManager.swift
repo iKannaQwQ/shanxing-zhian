@@ -34,6 +34,7 @@ final class ARSessionManager: NSObject, ObservableObject {
     /// M5：上传统计与连接状态（由 uploader 转发）。
     @Published private(set) var uploadStats = FrameUploader.Stats()
     @Published private(set) var uploadConnection = FrameUploader.Connection.unknown
+    @Published private(set) var lastRiskResult = FrameUploader.RiskSnapshot()
 
     let uploader = FrameUploader()
 
@@ -111,6 +112,9 @@ final class ARSessionManager: NSObject, ObservableObject {
         uploader.$connection
             .receive(on: RunLoop.main)
             .assign(to: &$uploadConnection)
+        uploader.$lastResult
+            .receive(on: RunLoop.main)
+            .assign(to: &$lastRiskResult)
 
         UploadSettings.shared.$host
             .merge(with: UploadSettings.shared.$port)

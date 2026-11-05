@@ -256,6 +256,25 @@ struct SessionView: View {
                         .multilineTextAlignment(.trailing)
                 }
 
+                HStack {
+                    Text("端到端风险").font(.subheadline)
+                    Spacer()
+                    Text(manager.lastRiskResult.overallRisk)
+                        .font(.headline.monospaced())
+                        .foregroundStyle(riskColor(manager.lastRiskResult.overallRisk))
+                }
+                FactRow(label: "系统状态", value: manager.lastRiskResult.systemStatus)
+                FactRow(label: "A→B / B→A",
+                        value: "\(manager.lastRiskResult.passAToB) / \(manager.lastRiskResult.passBToA)")
+                FactRow(label: "服务端耗时",
+                        value: String(format: "%.0f ms", manager.lastRiskResult.processingMs))
+                if !manager.lastRiskResult.reasons.isEmpty {
+                    FactRow(label: "理由", value: manager.lastRiskResult.reasons.joined(separator: ", "))
+                }
+                if let error = manager.lastRiskResult.error {
+                    FactRow(label: "回显错误", value: error)
+                }
+
                 FactRow(label: "已发送", value: "\(manager.uploadStats.sent)")
                 FactRow(label: "失败", value: "\(manager.uploadStats.failed)")
                 FactRow(label: "队列",
@@ -338,6 +357,16 @@ struct SessionView: View {
         case .checking: return "测试中…"
         case .ok(let detail): return "正常 · \(detail)"
         case .failed(let detail): return "失败 · \(detail)"
+        }
+    }
+
+    private func riskColor(_ risk: String) -> Color {
+        switch risk {
+        case "SAFE": return .green
+        case "LOW": return .yellow
+        case "MEDIUM": return .orange
+        case "HIGH": return .red
+        default: return .secondary
         }
     }
 

@@ -13,7 +13,8 @@ namespace {
 
 void usage() {
   std::cout << "用法: rock_risk_cli [--input <file>] [--stdin] [--now-ms <ms>]\n"
-               "                     [--policy <file>] [--compact]\n"
+               "                     [--policy <file>] [--compact] [--stream]\n"
+               "      --stream: 从 stdin 逐行读 perception_report JSON，逐行输出 road_status JSON。\n"
                "说明: 读取感知模块输出的 perception_report JSON，输出 RoadStatus JSON。\n"
                "      --now-ms 0 表示使用当前系统时间（默认）。\n";
 }
@@ -70,6 +71,8 @@ int main(int argc, char** argv) {
   int64_t now_ms = 0;
   std::string policy_path;
   bool compact = false;
+  bool stream = false;
+  bool now_given = false;
 
   for (int i = 1; i < argc; ++i) {
     const std::string a = argv[i];
@@ -79,10 +82,13 @@ int main(int argc, char** argv) {
       from_stdin = true;
     } else if (a == "--now-ms" && i + 1 < argc) {
       now_ms = std::stoll(argv[++i]);
+      now_given = true;
     } else if (a == "--policy" && i + 1 < argc) {
       policy_path = argv[++i];
     } else if (a == "--compact") {
       compact = true;
+    } else if (a == "--stream") {
+      stream = true;
     } else if (a == "-h" || a == "--help") {
       usage();
       return 0;
@@ -93,7 +99,7 @@ int main(int argc, char** argv) {
     }
   }
 
-  if (now_ms == 0) now_ms = now_ms_system();
+  if (!now_given) now_ms = now_ms_system();
 
   rock_risk::Policy policy;
   if (!policy_path.empty()) {
@@ -104,6 +110,36 @@ int main(int argc, char** argv) {
     }
   }
   policy.recompute();
+
+  rock_risk::RiskAssessor assessor(policy);
+  std::string perr;
+  if (!policy.valid(&perr)) {
+    std::cerr << "策略参数非法: " << perr << "\n";
+    return 3;
+  }
+
+  if (stream) {
+    // 常驻模式：每行一帧。未显式给 --now-ms 时，用帧自身时间戳作为"现在"，
+    // 即 age=0 —— 跨设备时钟不可比，传输延迟由调用方另行统计。
+    std::string line;
+    while (std::getline(std::cin, line)) {
+      if (line.empty()) continue;
+      auto parsed = rock_risk::parse_perception_json(line);
+      if (!parsed.ok) {
+        auto status = rock_risk::make_error_status(parsed.value.frame_id,
+                                                   parsed.value.timestamp_ns,
+                                                   parsed.error_code,
+                                                   parsed.error_message);
+        std::cout << rock_risk::serialize_road_status(status, false) << "\n" << std::flush;
+        continue;
+      }
+      const int64_t effective_now =
+          now_given ? now_ms : parsed.value.timestamp_ns / 1000000;
+      const auto status = assessor.assess(parsed.value, effective_now);
+      std::cout << rock_risk::serialize_road_status(status, false) << "\n" << std::flush;
+    }
+    return 0;
+  }
 
   std::string text;
   if (from_stdin || input_path.empty()) {
@@ -133,13 +169,6 @@ int main(int argc, char** argv) {
     return 2;
   }
 
-  std::string perr;
-  if (!policy.valid(&perr)) {
-    std::cerr << "策略参数非法: " << perr << "\n";
-    return 3;
-  }
-
-  rock_risk::RiskAssessor assessor(policy);
   const auto status = assessor.assess(parsed.value, now_ms);
   std::cout << rock_risk::serialize_road_status(status, !compact) << "\n";
   return 0;
