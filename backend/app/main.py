@@ -96,6 +96,7 @@ def create_app(settings: Settings | None = None,
             "service": "mountain-road-backend",
             "rock_detector": bool(getattr(pipeline, "rock_detector", None)),
             "simulate_rock": getattr(pipeline, "simulate_rock", "none"),
+            "road_model": settings.road_model,
             "uptime_s": round(time.time() - app.state.started_at, 1) if ready() else 0,
             "epoch_ns": now_ns(),
         }

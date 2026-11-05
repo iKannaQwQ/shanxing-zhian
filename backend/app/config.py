@@ -33,6 +33,8 @@ class Settings:
     # 推理
     device: str = _env("ROAD_DEVICE", "auto")
     rock_weights: str | None = os.environ.get("ROAD_ROCK_WEIGHTS") or None
+    # 道路分割模型: "yolop"（默认）或 U-Net 权重路径（沙盘微调后使用）
+    road_model: str = _env("ROAD_ROAD_MODEL", "yolop")
     simulate_rock: str = _env("ROAD_SIMULATE_ROCK", "none")
 
     # 是否把原始帧落盘（默认关闭：10fps 会产生 4MB/s）

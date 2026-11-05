@@ -118,12 +118,19 @@ class InferencePipeline:
     """串行推理。构造时加载模型，之后 `process_bundle` 可重复调用。"""
 
     def __init__(self, device: str = "auto", rock_weights: str | None = None,
-                 simulate_rock: str = "none"):
-        from perception.road.segmenter import YolopRoadSegmenter
-
+                 simulate_rock: str = "none", road_model: str = "yolop"):
         self.device = device
         self.simulate_rock = simulate_rock
-        self.segmenter = YolopRoadSegmenter(device=device)
+
+        # 沙盘微调之后把 ROAD_ROAD_MODEL 指向权重文件即可切换，不改代码
+        if road_model and road_model != "yolop":
+            from perception.road.unet_segmenter import UNetRoadSegmenter
+            self.segmenter = UNetRoadSegmenter(road_model, device=device)
+            print(f"[pipeline] 道路分割: U-Net ({road_model})", flush=True)
+        else:
+            from perception.road.segmenter import YolopRoadSegmenter
+            self.segmenter = YolopRoadSegmenter(device=device)
+            print("[pipeline] 道路分割: YOLOP", flush=True)
 
         detector = None
         if rock_weights:

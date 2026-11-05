@@ -1,0 +1,9 @@
+{
+  "total": 20,
+  "train": 15,
+  "val": 5,
+  "with_rock": 16,
+  "val_with_rock": 4,
+  "seed": 0,
+  "val_ratio": 0.25
+}
