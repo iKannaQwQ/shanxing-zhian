@@ -7,7 +7,7 @@ const route = useRoute()
 /** 只有已完成的页面可点击；其余标注待开发，避免死链。 */
 const menu = [
   { path: '/admin', label: '运行总览', ready: true },
-  { path: '/admin/monitor', label: '实时监控', ready: false },
+  { path: '/admin/monitor', label: '实时监控', ready: true },
   { path: '/admin/events', label: '事件管理', ready: false },
   { path: '/admin/history', label: '历史数据', ready: false },
   { path: '/admin/devices', label: '设备管理', ready: false },

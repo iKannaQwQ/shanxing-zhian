@@ -100,6 +100,16 @@ def main() -> int:
                     report = service.process_files(
                         item["metadata"], item["rgb_path"],
                         item["depth_path"], item.get("confidence_path"))
+                    # 把可视化需要的产物写进该帧目录，供管理后台读取
+                    artifact_dir = Path(item["rgb_path"]).parent
+                    mask = getattr(service, "last_road_mask", None)
+                    if mask is not None:
+                        import cv2
+                        cv2.imwrite(str(artifact_dir / "road_mask.png"),
+                                    (mask > 0).astype("uint8") * 255)
+                    (artifact_dir / "perception.json").write_text(
+                        json.dumps(report, ensure_ascii=False), encoding="utf-8")
+
                     code, response = http_json(
                         f"{base}/api/v1/ingest/perception",
                         method="POST",

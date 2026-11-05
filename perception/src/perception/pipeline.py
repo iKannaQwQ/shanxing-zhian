@@ -57,6 +57,7 @@ class PerceptionPipeline:
                  rock_detector: Any | None = None,
                  config: PipelineConfig | None = None):
         self.road_segmenter = road_segmenter
+        self.last_road_mask = None
         self.rock_detector = rock_detector
         self.cfg = config or PipelineConfig()
 
@@ -73,6 +74,8 @@ class PerceptionPipeline:
         try:
             t0 = time.perf_counter()
             road = self._segment_road(inp)
+            # 保留掩码供可视化（worker 会存成 PNG 供管理后台叠加显示）
+            self.last_road_mask = road.mask
             timings["road_ms"] = (time.perf_counter() - t0) * 1000
 
             t0 = time.perf_counter()

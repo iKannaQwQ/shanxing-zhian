@@ -295,7 +295,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/api/v1/frames/{frame_id}/{artifact}")
     async def frame_artifact(frame_id: str, artifact: str) -> Any:
         names = {"rgb": "rgb.jpg", "depth": "depth.bin",
-                 "confidence": "confidence.bin", "metadata": "metadata.json"}
+                 "confidence": "confidence.bin", "metadata": "metadata.json",
+                 "road_mask": "road_mask.png", "perception": "perception.json"}
         if artifact not in names:
             return JSONResponse(status_code=404,
                                 content={"ok": False, "error": "unknown artifact"})

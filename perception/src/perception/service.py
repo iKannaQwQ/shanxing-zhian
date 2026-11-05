@@ -115,11 +115,14 @@ class PerceptionService:
         self.segmenter.rotation_cw = rotation_cw(
             metadata.get("capture", {}).get("device_orientation"))
 
+        self.last_road_mask = None
         report = self.pipeline.process(FrameInput(
             frame_id=metadata["frame_id"],
             timestamp_ns=metadata["ts_capture_ns"],
             rgb=rgb, depth=depth, intrinsics=intrinsics, confidence=confidence,
             rocks=None, source="LIVE"))
+
+        self.last_road_mask = self.pipeline.last_road_mask
 
         if self.simulate_rock != "none":
             inject_synthetic_rock(report, self.simulate_rock)

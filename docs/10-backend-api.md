@@ -102,7 +102,7 @@ New-NetFirewallRule -DisplayName "MountainRoad 8000" -Direction Inbound `
 | POST | `/api/v1/ingest/frame` | 上传帧（multipart，**202**） |
 | GET | `/api/v1/frames/pending?limit` | **AI worker 专用**，拉待处理帧 |
 | GET | `/api/v1/frames/{id}` | 单帧元数据 |
-| GET | `/api/v1/frames/{id}/{artifact}` | 下载 `rgb`/`depth`/`confidence`/`metadata` |
+| GET | `/api/v1/frames/{id}/{artifact}` | 下载 `rgb`/`depth`/`confidence`/`metadata`/`road_mask`/`perception` |
 | POST | `/api/v1/ingest/perception` | **AI worker 专用**，回传感知结果（**202**） |
 | WS | `/ws/status` | 实时推送 |
 
@@ -221,7 +221,16 @@ GET /api/v1/status
 
 `frames.status` 取值：`stored` → `processed` / `failed` / `expired`。
 
-图像与深度**不进数据库**，只存路径；文件按 `<artifacts>/<frame_id>/` 组织。
+图像与深度**不进数据库**，只存路径；文件按 `<artifacts>/<frame_id>/` 组织：
+
+| 文件 | 生产者 | 用途 |
+|---|---|---|
+| `rgb.jpg` / `depth.bin` / `confidence.bin` / `metadata.json` | 采集端上传 | 原始数据 |
+| `road_mask.png` | AI worker | 管理后台叠加显示道路分割 |
+| `perception.json` | AI worker | 完整感知结果（检测框、深度估计、理由码） |
+
+worker 把这两个可视化产物写进同一帧目录，后端按 `road_mask` / `perception`
+两个 artifact 名提供下载——**不需要为可视化额外建表**。
 
 迁移：启动时对老库执行 `ALTER TABLE ADD COLUMN` 补齐新列（幂等）。
 
