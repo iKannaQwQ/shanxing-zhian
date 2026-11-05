@@ -266,6 +266,7 @@ struct SessionView: View {
                 FactRow(label: "系统状态", value: manager.lastRiskResult.systemStatus)
                 FactRow(label: "A→B / B→A",
                         value: "\(manager.lastRiskResult.passAToB) / \(manager.lastRiskResult.passBToA)")
+                FactRow(label: "状态流", value: manager.streamState)
                 FactRow(label: "服务端耗时",
                         value: String(format: "%.0f ms", manager.lastRiskResult.processingMs))
                 if !manager.lastRiskResult.reasons.isEmpty {

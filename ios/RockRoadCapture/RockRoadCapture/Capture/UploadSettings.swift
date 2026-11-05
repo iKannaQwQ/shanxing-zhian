@@ -40,4 +40,15 @@ final class UploadSettings: ObservableObject {
 
     var ingestURL: URL? { baseURL?.appendingPathComponent("api/v1/ingest/frame") }
     var healthURL: URL? { baseURL?.appendingPathComponent("api/v1/health") }
+
+    /// WebSocket 推送地址：与 HTTP 同主机同端口。
+    var wsURL: URL? {
+        guard let base = baseURL,
+              var components = URLComponents(url: base, resolvingAgainstBaseURL: false) else {
+            return nil
+        }
+        components.scheme = "ws"
+        components.path = "/ws/status"
+        return components.url
+    }
 }

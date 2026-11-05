@@ -35,19 +35,6 @@ final class FrameUploader: ObservableObject {
         var lastError: String?
     }
 
-    /// 端到端回显：服务端返回的 RoadStatus 摘要。
-    struct RiskSnapshot: Equatable {
-        var overallRisk: String = "-"
-        var systemStatus: String = "-"
-        var passAToB: String = "-"
-        var passBToA: String = "-"
-        var processingMs: Double = 0
-        var reasons: [String] = []
-        var error: String?
-        var receivedAt: Date?
-        var frameCount: Int = 0
-    }
-
     @Published private(set) var stats = Stats()
     @Published private(set) var connection: Connection = .unknown
     @Published private(set) var lastResult = RiskSnapshot()
@@ -215,46 +202,25 @@ final class FrameUploader: ObservableObject {
         return true
     }
 
-    /// 解析服务端返回的 road_status，派发到主线程更新界面。
+    /// 解析服务端响应。
+    ///
+    /// 异步后端返回 202 + accepted，没有 road_status——判定结果走 WebSocket，
+    /// 因此这里解析不到时不要报错，保持上一次结果即可。
     private func publishResult(from data: Data?) {
-        var snapshot = RiskSnapshot()
-        snapshot.frameCount = counters.sent
-        snapshot.receivedAt = Date()
-        if let data,
-           let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            snapshot.processingMs = (root["processing_ms"] as? Double) ?? 0
-            if let rs = root["road_status"] as? [String: Any] {
-                snapshot.overallRisk = (rs["overall_risk"] as? String) ?? "-"
-                snapshot.systemStatus = (rs["system_status"] as? String) ?? "-"
-                if let pass = rs["passability"] as? [String: Any] {
-                    snapshot.passAToB = (pass["A_TO_B"] as? String) ?? "-"
-                    snapshot.passBToA = (pass["B_TO_A"] as? String) ?? "-"
-                }
-                if let reasons = rs["reasons"] as? [[String: Any]] {
-                    snapshot.reasons = Array(reasons.compactMap { $0["code"] as? String }.prefix(3))
-                }
-            } else {
-                snapshot.error = "响应缺少 road_status"
-            }
-        } else {
-            snapshot.error = "响应不是合法 JSON"
+        guard let data,
+              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return
         }
-        let value = snapshot
-        DispatchQueue.main.async { self.lastResult = value }
+        if let snapshot = RiskSnapshot.parse(root) {
+            DispatchQueue.main.async { self.lastResult = snapshot }
+        }
     }
 
     private func publishResult(error: String) {
-        var snapshot = lastResultSnapshotForError()
-        snapshot.error = error
-        let value = snapshot
-        DispatchQueue.main.async { self.lastResult = value }
-    }
-
-    private func lastResultSnapshotForError() -> RiskSnapshot {
         var snapshot = RiskSnapshot()
-        snapshot.frameCount = counters.sent
+        snapshot.error = error
         snapshot.receivedAt = Date()
-        return snapshot
+        DispatchQueue.main.async { self.lastResult = snapshot }
     }
 
     private func recordLatency(_ value: Double) {

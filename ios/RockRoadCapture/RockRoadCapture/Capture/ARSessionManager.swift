@@ -34,9 +34,12 @@ final class ARSessionManager: NSObject, ObservableObject {
     /// M5：上传统计与连接状态（由 uploader 转发）。
     @Published private(set) var uploadStats = FrameUploader.Stats()
     @Published private(set) var uploadConnection = FrameUploader.Connection.unknown
-    @Published private(set) var lastRiskResult = FrameUploader.RiskSnapshot()
+    @Published private(set) var lastRiskResult = RiskSnapshot()
 
     let uploader = FrameUploader()
+    let statusStream = StatusStream()
+
+    @Published private(set) var streamState = "未连接"
 
     let session = ARSession()
 
@@ -116,14 +119,26 @@ final class ARSessionManager: NSObject, ObservableObject {
             .receive(on: RunLoop.main)
             .assign(to: &$lastRiskResult)
 
+        // WebSocket 推送优先：覆盖 HTTP 响应里的旧值
+        statusStream.$lastSnapshot
+            .compactMap { $0 }
+            .receive(on: RunLoop.main)
+            .sink { [weak self] snapshot in self?.lastRiskResult = snapshot }
+            .store(in: &cancellables)
+        statusStream.$state
+            .receive(on: RunLoop.main)
+            .assign(to: &$streamState)
+
         UploadSettings.shared.$host
             .merge(with: UploadSettings.shared.$port)
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 self?.uploader.setIngestURL(UploadSettings.shared.ingestURL)
+                self?.statusStream.update(url: UploadSettings.shared.wsURL)
             }
             .store(in: &cancellables)
         uploader.setIngestURL(UploadSettings.shared.ingestURL)
+        statusStream.update(url: UploadSettings.shared.wsURL)
     }
 
     private var cancellables = Set<AnyCancellable>()
@@ -172,6 +187,7 @@ final class ARSessionManager: NSObject, ObservableObject {
         uploader.reset()
         startedAt = CACurrentMediaTime()
         MemoryProbe.resetPeak()
+        statusStream.start()
 
         session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
         DispatchQueue.main.async {
@@ -189,6 +205,7 @@ final class ARSessionManager: NSObject, ObservableObject {
 
     func stop() {
         session.pause()
+        statusStream.stop()
         DispatchQueue.main.async {
             self.isRunning = false
             self.facts = FrameFacts()
@@ -252,6 +269,7 @@ final class ARSessionManager: NSObject, ObservableObject {
         let u = uploadStats
         lines.append("--- M5 上传 ---")
         lines.append("服务器: \(UploadSettings.shared.ingestURL?.absoluteString ?? "未配置")")
+        lines.append("状态流: \(streamState)   \(UploadSettings.shared.wsURL?.absoluteString ?? "-")")
         lines.append("已发送: \(u.sent)   失败: \(u.failed)   队列: \(u.queued)/\(u.capacity)   "
                      + "溢出丢弃: \(u.droppedOverflow)   质量门控丢弃: \(u.droppedQuality)   "
                      + "无地址丢弃: \(u.droppedNoServer)")
