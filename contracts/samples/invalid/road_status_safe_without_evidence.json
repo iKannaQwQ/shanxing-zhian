@@ -1,0 +1,84 @@
+{
+  "alternative_path": {
+    "status": "AVAILABLE",
+    "available": true,
+    "verifiable": false,
+    "min_gap_m": null,
+    "oncoming": "UNVERIFIABLE",
+    "reasons": [
+      {
+        "code": "ALTERNATIVE_AVAILABLE",
+        "message": "x"
+      }
+    ]
+  },
+  "data_quality": {
+    "degraded": true,
+    "depth_usable": true,
+    "frame_age_ms": 0,
+    "min_rock_confidence": 0.91,
+    "reasons": [],
+    "road_coverage_ratio": 0.1848,
+    "rock_count": 1
+  },
+  "direction_basis": "SHARED_CORRIDOR",
+  "directions": [
+    {
+      "direction": "A_TO_B",
+      "limiting_rock_ids": [],
+      "passability": "PASSABLE",
+      "reasons": [
+        {
+          "code": "NO_INTRUSION_DETECTED",
+          "message": "x"
+        }
+      ],
+      "remaining_width_m": null,
+      "risk": "SAFE"
+    },
+    {
+      "direction": "B_TO_A",
+      "limiting_rock_ids": [],
+      "passability": "PASSABLE",
+      "reasons": [
+        {
+          "code": "NO_INTRUSION_DETECTED",
+          "message": "x"
+        }
+      ],
+      "remaining_width_m": null,
+      "risk": "SAFE"
+    }
+  ],
+  "disclaimer_version": "0.1",
+  "engine": {
+    "name": "rock_risk",
+    "policy_version": "1",
+    "version": "0.1.0"
+  },
+  "frame_id": "frame-000001",
+  "msg_type": "road_status",
+  "overall_risk": "SAFE",
+  "passability": {
+    "A_TO_B": "PASSABLE",
+    "B_TO_A": "PASSABLE"
+  },
+  "reasons": [
+    {
+      "code": "ROAD_HAS_GAPS",
+      "message": "10 个行带无道路（遮挡或断口）"
+    },
+    {
+      "code": "NO_DEPTH_DATA",
+      "message": "NO_DEPTH_DATA"
+    },
+    {
+      "code": "NO_ROCK_DETECTED",
+      "message": "未检出落石（不等于安全，受观测范围限制）"
+    }
+  ],
+  "road_id": "main",
+  "schema_version": "1.0",
+  "system_status": "NO_DEPTH",
+  "timestamp_ns": 1800000000000000000
+}

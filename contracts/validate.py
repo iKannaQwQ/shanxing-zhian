@@ -27,6 +27,7 @@ SCHEMA_BY_MSG = {
     "frame_bundle": "frame_bundle.schema.json",
     "perception_result": "perception_result.schema.json",
     "risk_assessment": "risk_assessment.schema.json",
+    "road_status": "road_status.schema.json",
 }
 
 # ---- 策略阈值（与 docs/02-risk-model.md 保持一致；改动需同步）----
@@ -167,6 +168,73 @@ def check_cross(perception: dict, risk: dict) -> list[str]:
     return errs
 
 
+def check_road_status(doc: dict) -> list[str]:
+    """C++ 引擎输出的安全不变量。"""
+    errs: list[str] = []
+    overall = doc["overall_risk"]
+    system = doc["system_status"]
+    dq = doc["data_quality"]
+    ap = doc["alternative_path"]
+    dirs = doc["directions"]
+    dir_risks = {d["direction"]: d["risk"] for d in dirs}
+    dir_pass = {d["direction"]: d["passability"] for d in dirs}
+
+    # S1: 系统状态不是 OK 时不允许宣称 SAFE
+    if overall == "SAFE" and system != "OK":
+        errs.append(f"[rule S1] overall=SAFE 但 system_status={system}")
+    if overall == "SAFE" and dq["degraded"]:
+        errs.append("[rule S1] overall=SAFE 但 data_quality.degraded=true")
+
+    # S2: 整体 UNKNOWN 时任何方向都不得给出通行/阻断结论
+    if overall == "UNKNOWN":
+        for d in dirs:
+            if d["risk"] != "UNKNOWN" or d["passability"] != "UNKNOWN":
+                errs.append(f"[rule S2] overall=UNKNOWN 但 {d['direction']} 给出 "
+                            f"{d['risk']}/{d['passability']}")
+
+    # S3: 方向等级与可通行性的映射必须一致
+    mapping = {"SAFE": "PASSABLE", "LOW": "PASSABLE",
+               "MEDIUM": "RESTRICTED", "HIGH": "BLOCKED", "UNKNOWN": "UNKNOWN"}
+    for d in dirs:
+        if d["passability"] != mapping[d["risk"]]:
+            errs.append(f"[rule S3] {d['direction']} risk={d['risk']} 与 "
+                        f"passability={d['passability']} 不匹配")
+
+    # S4: 汇总 passability 必须与 directions 一致
+    for k, v in doc.get("passability", {}).items():
+        if dir_pass.get(k) != v:
+            errs.append(f"[rule S4] passability.{k}={v} 与 directions 不一致")
+
+    # S5: 替代通行 AVAILABLE 的证据门槛
+    if ap["status"] == "AVAILABLE":
+        if ap["available"] is not True:
+            errs.append("[rule S5] status=AVAILABLE 但 available 不为 true")
+        if not ap["verifiable"]:
+            errs.append("[rule S5] status=AVAILABLE 但 verifiable=false")
+        if ap["oncoming"] != "CONFIRMED_NONE_VISIBLE":
+            errs.append("[rule S5] 对向交通未确认却判 AVAILABLE")
+        if ap["min_gap_m"] is None:
+            errs.append("[rule S5] AVAILABLE 但未给出 min_gap_m")
+
+    # S6: available 字段与 status 必须自洽
+    if ap["status"] in ("UNKNOWN", "NOT_EVALUATED") and ap["available"] is not None:
+        errs.append(f"[rule S6] status={ap['status']} 时 available 必须为 null")
+    if ap["status"] == "UNAVAILABLE" and ap["available"] is not False:
+        errs.append("[rule S6] status=UNAVAILABLE 时 available 必须为 false")
+
+    # S7: 整体等级不得优于任一方向
+    order = ["SAFE", "LOW", "MEDIUM", "HIGH", "UNKNOWN"]
+    worst = max(dir_risks.values(), key=order.index)
+    if overall != worst:
+        errs.append(f"[rule S7] overall={overall} 与最不利方向 {worst} 不一致")
+
+    # S8: 必须有可追溯理由
+    if not doc["reasons"] and not any(d["reasons"] for d in dirs):
+        errs.append("[rule S8] 全无理由码，判定不可追溯")
+
+    return errs
+
+
 def validate_file(path: Path, cache: dict[str, dict]) -> list[str]:
     try:
         doc = load_json(path)
@@ -188,6 +256,8 @@ def validate_file(path: Path, cache: dict[str, dict]) -> list[str]:
         errs += check_perception(doc)
     elif mt == "risk_assessment":
         errs += check_risk(doc)
+    elif mt == "road_status":
+        errs += check_road_status(doc)
     return errs
 
 

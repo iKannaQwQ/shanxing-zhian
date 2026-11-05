@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mountain-road.local/schemas/road_status.schema.json",
+  "title": "RoadStatus",
+  "description": "C++ 风险引擎输出（P1a）。overall_risk 是实验性规则结果，不构成真实道路安全判据。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "msg_type", "road_id", "frame_id", "timestamp_ns",
+    "overall_risk", "system_status", "directions", "passability",
+    "alternative_path", "data_quality", "reasons", "engine", "disclaimer_version"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "pattern": "^\\d+\\.\\d+$" },
+    "msg_type": { "const": "road_status" },
+    "road_id": { "type": "string", "minLength": 1 },
+    "frame_id": { "type": "string", "minLength": 1 },
+    "timestamp_ns": { "type": "integer", "minimum": 0 },
+    "overall_risk": { "enum": ["SAFE", "LOW", "MEDIUM", "HIGH", "UNKNOWN"] },
+    "system_status": {
+      "enum": ["OK", "DEGRADED", "STALE", "NO_ROAD", "NO_DEPTH", "INPUT_ERROR"]
+    },
+    "direction_basis": { "type": "string" },
+    "directions": {
+      "type": "array", "minItems": 2, "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["direction", "risk", "passability", "remaining_width_m",
+                     "limiting_rock_ids", "reasons"],
+        "properties": {
+          "direction": { "enum": ["A_TO_B", "B_TO_A"] },
+          "risk": { "enum": ["SAFE", "LOW", "MEDIUM", "HIGH", "UNKNOWN"] },
+          "passability": { "enum": ["PASSABLE", "RESTRICTED", "BLOCKED", "UNKNOWN"] },
+          "remaining_width_m": { "type": ["number", "null"], "minimum": 0 },
+          "limiting_rock_ids": { "type": "array", "items": { "type": "string" } },
+          "reasons": { "$ref": "#/$defs/reasons" }
+        }
+      }
+    },
+    "passability": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "A_TO_B": { "enum": ["PASSABLE", "RESTRICTED", "BLOCKED", "UNKNOWN"] },
+        "B_TO_A": { "enum": ["PASSABLE", "RESTRICTED", "BLOCKED", "UNKNOWN"] }
+      }
+    },
+    "alternative_path": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "available", "verifiable", "min_gap_m", "oncoming", "reasons"],
+      "properties": {
+        "status": { "enum": ["AVAILABLE", "UNAVAILABLE", "UNKNOWN", "NOT_EVALUATED"] },
+        "available": { "type": ["boolean", "null"] },
+        "verifiable": { "type": "boolean" },
+        "min_gap_m": { "type": ["number", "null"], "minimum": 0 },
+        "oncoming": { "enum": ["PRESENT", "CONFIRMED_NONE_VISIBLE", "UNVERIFIABLE", "UNKNOWN"] },
+        "reasons": { "$ref": "#/$defs/reasons" }
+      }
+    },
+    "data_quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frame_age_ms", "depth_usable", "road_coverage_ratio",
+                   "min_rock_confidence", "rock_count", "degraded", "reasons"],
+      "properties": {
+        "frame_age_ms": { "type": "integer" },
+        "depth_usable": { "type": "boolean" },
+        "road_coverage_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "min_rock_confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "rock_count": { "type": "integer", "minimum": 0 },
+        "degraded": { "type": "boolean" },
+        "reasons": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "reasons": { "$ref": "#/$defs/reasons" },
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "policy_version"],
+      "properties": {
+        "name": { "const": "rock_risk" },
+        "version": { "type": "string" },
+        "policy_version": { "type": "string" }
+      }
+    },
+    "disclaimer_version": { "const": "0.1" }
+  },
+  "$defs": {
+    "reasons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message"],
+        "properties": {
+          "code": { "type": "string", "minLength": 1 },
+          "message": { "type": "string" }
+        }
+      }
+    }
+  }
+}

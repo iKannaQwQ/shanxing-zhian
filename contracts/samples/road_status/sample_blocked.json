@@ -1,0 +1,96 @@
+{
+  "alternative_path": {
+    "available": false,
+    "min_gap_m": 0.05,
+    "oncoming": "UNVERIFIABLE",
+    "reasons": [
+      {
+        "code": "ALTERNATIVE_GAP_TOO_NARROW",
+        "message": "剩余间隙小于最小可通行宽度"
+      },
+      {
+        "code": "ALTERNATIVE_BLIND_CURVE",
+        "message": "对向交通不可确认（盲弯或缺少该路信息）"
+      },
+      {
+        "code": "ALTERNATIVE_VISIBILITY_TOO_SHORT",
+        "message": "可视视距不足以前视确认"
+      }
+    ],
+    "status": "UNAVAILABLE",
+    "verifiable": true
+  },
+  "data_quality": {
+    "degraded": false,
+    "depth_usable": true,
+    "frame_age_ms": 0,
+    "min_rock_confidence": 0.91,
+    "reasons": [],
+    "road_coverage_ratio": 0.1848,
+    "rock_count": 1
+  },
+  "direction_basis": "SHARED_CORRIDOR",
+  "directions": [
+    {
+      "direction": "A_TO_B",
+      "limiting_rock_ids": [
+        "R1"
+      ],
+      "passability": "BLOCKED",
+      "reasons": [
+        {
+          "code": "REMAINING_WIDTH_BELOW_MIN",
+          "message": "剩余通行宽度小于最小可通行宽度"
+        }
+      ],
+      "remaining_width_m": 0.05,
+      "risk": "HIGH"
+    },
+    {
+      "direction": "B_TO_A",
+      "limiting_rock_ids": [
+        "R1"
+      ],
+      "passability": "BLOCKED",
+      "reasons": [
+        {
+          "code": "REMAINING_WIDTH_BELOW_MIN",
+          "message": "剩余通行宽度小于最小可通行宽度"
+        }
+      ],
+      "remaining_width_m": 0.05,
+      "risk": "HIGH"
+    }
+  ],
+  "disclaimer_version": "0.1",
+  "engine": {
+    "name": "rock_risk",
+    "policy_version": "1",
+    "version": "0.1.0"
+  },
+  "frame_id": "frame-000001",
+  "msg_type": "road_status",
+  "overall_risk": "HIGH",
+  "passability": {
+    "A_TO_B": "BLOCKED",
+    "B_TO_A": "BLOCKED"
+  },
+  "reasons": [
+    {
+      "code": "ROAD_HAS_GAPS",
+      "message": "10 个行带无道路（遮挡或断口）"
+    },
+    {
+      "code": "NO_DEPTH_DATA",
+      "message": "NO_DEPTH_DATA"
+    },
+    {
+      "code": "NO_ROCK_DETECTED",
+      "message": "未检出落石（不等于安全，受观测范围限制）"
+    }
+  ],
+  "road_id": "main",
+  "schema_version": "1.0",
+  "system_status": "OK",
+  "timestamp_ns": 1800000000000000000
+}
