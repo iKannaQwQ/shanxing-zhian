@@ -404,24 +404,24 @@ final class ARSessionManager: NSObject, ObservableObject {
 
     private func sendHeartbeat(reason: String) {
         guard let base = UploadSettings.shared.baseURL else { return }
-        let payload: [String: Any] = [
-            "device_id": deviceID,
-            "meta": [
-                "thermal": ThermalPolicy.name(for: ProcessInfo.processInfo.thermalState),
-                "thermal_label": thermalLabel,
-                "target_fps": targetFPS,
-                "jpeg_quality": currentQuality,
-                "reason": reason,
-                "uptime_s": Int(Date().timeIntervalSince1970 - startedEpoch),
-                "latency_ms": uploader.stats.lastLatencyMs,
-                "avg_latency_ms": uploader.stats.avgLatencyMs,
-                "sent": uploader.stats.sent,
-                "failed": uploader.stats.failed,
-                "dropped_overflow": uploader.stats.droppedOverflow,
-                "queue": uploader.stats.queued,
-            ],
+        var meta: [String: Any] = [
+            "thermal": ThermalPolicy.name(for: ProcessInfo.processInfo.thermalState),
+            "thermal_label": thermalLabel,
+            "target_fps": targetFPS,
+            "jpeg_quality": currentQuality,
+            "reason": reason,
+            "uptime_s": Int(Date().timeIntervalSince1970 - startedEpoch),
+            "sent": uploader.stats.sent,
+            "failed": uploader.stats.failed,
+            "dropped_overflow": uploader.stats.droppedOverflow,
+            "queue": uploader.stats.queued,
         ]
-        uploader.sendHeartbeat(base: base, payload: payload)
+        // 还没有成功上传过就不要报 0 ms——那会被当成"延迟极低"
+        if uploader.stats.lastLatencyMs > 0 {
+            meta["latency_ms"] = uploader.stats.lastLatencyMs
+            meta["avg_latency_ms"] = uploader.stats.avgLatencyMs
+        }
+        uploader.sendHeartbeat(base: base, payload: ["device_id": deviceID, "meta": meta])
     }
 
     private func setStatus(_ text: String) {

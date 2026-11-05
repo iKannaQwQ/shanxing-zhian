@@ -125,6 +125,21 @@ class Database:
         thermal = (meta or {}).get("thermal")
         fps = (meta or {}).get("target_fps")
         with self._lock:
+            # 心跳是**增量**的：不同版本/不同时刻上报的字段不一样，
+            # 直接覆盖会把已知的延迟、热状态等信息抹掉。
+            merged = {}
+            existing = self._conn.execute(
+                "SELECT meta_json FROM devices WHERE device_id = ?",
+                (device_id,)).fetchone()
+            if existing and existing["meta_json"]:
+                try:
+                    merged = json.loads(existing["meta_json"])
+                except json.JSONDecodeError:
+                    merged = {}
+            if meta:
+                merged.update(meta)
+            stored_meta = json.dumps(merged, ensure_ascii=False) if merged else None
+
             self._conn.execute(
                 """INSERT INTO devices (device_id, first_seen_ns, last_seen_ns, frames,
                                         meta_json, last_heartbeat_ns, thermal, target_fps)
@@ -137,8 +152,7 @@ class Database:
                                                   devices.last_heartbeat_ns),
                      thermal = COALESCE(excluded.thermal, devices.thermal),
                      target_fps = COALESCE(excluded.target_fps, devices.target_fps)""",
-                (device_id, ts_ns, ts_ns,
-                 json.dumps(meta, ensure_ascii=False) if meta else None,
+                (device_id, ts_ns, ts_ns, stored_meta,
                  ts_ns, thermal, fps,
                  1 if count_frame else 0))
             self._conn.commit()
