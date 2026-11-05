@@ -54,3 +54,6 @@ perception/results/
 
 runs/
 perception/weights/
+
+# Xcode 派生数据
+.build/
