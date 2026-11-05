@@ -16,7 +16,10 @@ final class StatusStream: NSObject, ObservableObject {
     private var shouldRun = false
     private var reconnectScheduled = false
     private var stopping = false
+    private var connectedFlag = false
     private var messages = 0
+    private var attempts = 0
+    private var watchdog: Timer?
 
     func update(url: URL?) {
         guard url != currentURL else { return }
@@ -26,12 +29,36 @@ final class StatusStream: NSObject, ObservableObject {
 
     func start() {
         shouldRun = true
+        stopping = false
+        startWatchdog()
         reconnect()
+    }
+
+    /// 从后台回到前台时调用：socket 通常已被系统杀掉，必须重建。
+    func resumeFromBackground() {
+        guard shouldRun else { return }
+        connectedFlag = false
+        reconnect()
+    }
+
+    /// 每 5 秒检查一次：该连却没连上就重试。
+    /// 依赖"失败回调"来重连是不够的——熄屏/切后台会直接掐断 socket，
+    /// 回调未必有机会执行。
+    private func startWatchdog() {
+        watchdog?.invalidate()
+        watchdog = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            guard self.shouldRun, !self.connectedFlag else { return }
+            self.reconnect()
+        }
     }
 
     func stop() {
         stopping = true
         shouldRun = false
+        connectedFlag = false
+        watchdog?.invalidate()
+        watchdog = nil
         task?.cancel(with: .goingAway, reason: nil)
         task = nil
         DispatchQueue.main.async { self.state = "已断开" }
@@ -40,6 +67,7 @@ final class StatusStream: NSObject, ObservableObject {
     // MARK: - 内部
 
     private func reconnect() {
+        attempts += 1
         task?.cancel(with: .goingAway, reason: nil)
         task = nil
         guard shouldRun, let url = currentURL else {
@@ -50,7 +78,7 @@ final class StatusStream: NSObject, ObservableObject {
         let socket = session.webSocketTask(with: url)
         task = socket
         socket.resume()
-        DispatchQueue.main.async { self.state = "连接中…" }
+        DispatchQueue.main.async { self.state = "连接中…（第 \(self.attempts) 次）" }
         listen(on: socket)
     }
 
@@ -59,10 +87,11 @@ final class StatusStream: NSObject, ObservableObject {
             guard let self else { return }
             switch result {
             case .failure(let error):
+                self.connectedFlag = false
                 // 主动停止时收到的收尾错误不显示，避免把"正常关闭"报成故障
                 guard !self.stopping else { return }
                 DispatchQueue.main.async {
-                    self.state = "断开: \(error.localizedDescription)"
+                    self.state = "断开: \(error.localizedDescription)（第 \(self.attempts) 次尝试）"
                 }
                 self.scheduleReconnect()
             case .success(let message):
@@ -82,7 +111,7 @@ final class StatusStream: NSObject, ObservableObject {
     }
 
     private func scheduleReconnect() {
-        guard shouldRun, !reconnectScheduled else { return }
+        guard shouldRun, !stopping, !reconnectScheduled else { return }
         reconnectScheduled = true
         DispatchQueue.global().asyncAfter(deadline: .now() + 2.0) { [weak self] in
             guard let self else { return }

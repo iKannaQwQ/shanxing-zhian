@@ -149,6 +149,13 @@ final class ARSessionManager: NSObject, ObservableObject {
             .store(in: &cancellables)
         uploader.setIngestURL(UploadSettings.shared.ingestURL)
         statusStream.update(url: UploadSettings.shared.wsURL)
+
+        // 熄屏或切后台会掐断 WebSocket，回到前台必须重建
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.willEnterForegroundNotification,
+            object: nil, queue: .main) { [weak self] _ in
+            self?.statusStream.resumeFromBackground()
+        }
     }
 
     private var cancellables = Set<AnyCancellable>()
