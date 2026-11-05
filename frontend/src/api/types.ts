@@ -126,3 +126,32 @@ export const ALTERNATIVE_TEXT: Record<AlternativeStatus, string> = {
   UNKNOWN: '无法确认',
   NOT_EVALUATED: '无需替代',
 }
+
+export type EventStatus = 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED' | 'IGNORED'
+
+export interface RockEvent {
+  id: number
+  ts_ns: number
+  frame_id: string
+  device_id: string
+  risk_level: RiskLevel
+  rock_count: number
+  note: string
+  status: EventStatus
+  updated_ns: number
+}
+
+export interface TimelineBucket {
+  start_ns: number
+  count: number
+  worst_risk: RiskLevel | null
+  blocked: number
+  unknown: number
+}
+
+export const EVENT_STATUS_TEXT: Record<EventStatus, string> = {
+  OPEN: '待处理',
+  ACKNOWLEDGED: '已确认',
+  RESOLVED: '已处理',
+  IGNORED: '已忽略',
+}

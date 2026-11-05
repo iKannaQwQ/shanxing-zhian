@@ -81,6 +81,11 @@ def assess_and_store(db: Database, engine: RiskEngine, frame_id: str,
     })
     db.mark_frame(frame_id, "processed")
 
+    # 出现落石即登记一条事件，供事件管理页跟进处理状态
+    rock_count = len(perception.get("rockfalls", []))
+    if rock_count > 0:
+        db.insert_rock_event(ts, frame_id, device_id, status["overall_risk"], rock_count)
+
     risk = status["overall_risk"]
     if risk != previous_risk:
         level = {"HIGH": "CRITICAL", "MEDIUM": "WARNING",

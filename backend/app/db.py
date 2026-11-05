@@ -60,6 +60,18 @@ CREATE TABLE IF NOT EXISTS assessments (
 CREATE INDEX IF NOT EXISTS idx_assess_ts ON assessments(ts_assessed_ns);
 CREATE INDEX IF NOT EXISTS idx_assess_risk ON assessments(overall_risk);
 
+CREATE TABLE IF NOT EXISTS rock_events (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts_ns         INTEGER NOT NULL,
+    frame_id      TEXT,
+    device_id     TEXT,
+    risk_level    TEXT,
+    rock_count    INTEGER,
+    note          TEXT DEFAULT '',
+    status        TEXT DEFAULT 'OPEN',
+    updated_ns    INTEGER
+);
+
 CREATE TABLE IF NOT EXISTS events (
     id        INTEGER PRIMARY KEY AUTOINCREMENT,
     ts_ns     INTEGER NOT NULL,
@@ -69,6 +81,8 @@ CREATE TABLE IF NOT EXISTS events (
     code      TEXT NOT NULL,
     message   TEXT
 );
+CREATE INDEX IF NOT EXISTS idx_rock_events_ts ON rock_events(ts_ns DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_rock_events_frame ON rock_events(frame_id);
 CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts_ns);
 """
 
@@ -163,6 +177,66 @@ class Database:
                            :road_detected, :road_status, :road_coverage, :rock_count,
                            :processing_ms, :source, :json)""", row)
             self._conn.commit()
+
+    def insert_rock_event(self, ts_ns: int, frame_id: str, device_id: str,
+                          risk_level: str, rock_count: int) -> None:
+        with self._lock:
+            self._conn.execute(
+                """INSERT OR IGNORE INTO rock_events
+                   (ts_ns, frame_id, device_id, risk_level, rock_count,
+                    note, status, updated_ns)
+                   VALUES (?, ?, ?, ?, ?, '', 'OPEN', ?)""",
+                (ts_ns, frame_id, device_id, risk_level, rock_count, ts_ns))
+            self._conn.commit()
+
+    def list_rock_events(self, limit: int = 50, offset: int = 0,
+                         status: str | None = None) -> list[dict]:
+        query = "SELECT * FROM rock_events"
+        params: list = []
+        if status and status != "ALL":
+            query += " WHERE status = ?"
+            params.append(status)
+        query += " ORDER BY ts_ns DESC LIMIT ? OFFSET ?"
+        params += [limit, offset]
+        with self._lock:
+            rows = self._conn.execute(query, params).fetchall()
+        return [dict(r) for r in rows]
+
+    def count_rock_events(self, status: str | None = None) -> int:
+        query = "SELECT COUNT(*) AS c FROM rock_events"
+        params: list = []
+        if status and status != "ALL":
+            query += " WHERE status = ?"
+            params.append(status)
+        with self._lock:
+            row = self._conn.execute(query, params).fetchone()
+        return int(row["c"])
+
+    def update_rock_event(self, event_id: int, note: str | None,
+                          status: str | None) -> dict | None:
+        with self._lock:
+            row = self._conn.execute("SELECT * FROM rock_events WHERE id = ?",
+                                     (event_id,)).fetchone()
+            if not row:
+                return None
+            self._conn.execute(
+                "UPDATE rock_events SET note = ?, status = ?, updated_ns = ? WHERE id = ?",
+                (note if note is not None else row["note"],
+                 status if status is not None else row["status"],
+                 now_ns(), event_id))
+            self._conn.commit()
+            updated = self._conn.execute("SELECT * FROM rock_events WHERE id = ?",
+                                         (event_id,)).fetchone()
+        return dict(updated) if updated else None
+
+    def timeline_rows(self, since_ns: int) -> list[dict]:
+        with self._lock:
+            rows = self._conn.execute(
+                """SELECT ts_assessed_ns, overall_risk, a_to_b, b_to_a, rock_count,
+                          road_coverage
+                   FROM assessments WHERE ts_assessed_ns >= ?
+                   ORDER BY ts_assessed_ns ASC""", (since_ns,)).fetchall()
+        return [dict(r) for r in rows]
 
     def insert_event(self, ts_ns: int, frame_id: str | None, device_id: str | None,
                      level: str, code: str, message: str = "") -> None:
@@ -287,9 +361,11 @@ class Database:
             deleted_frames = cur.rowcount
             cur = self._conn.execute("DELETE FROM events WHERE ts_ns < ?", (cutoff_ns,))
             deleted_events = cur.rowcount
+            cur = self._conn.execute("DELETE FROM rock_events WHERE ts_ns < ?", (cutoff_ns,))
+            deleted_rock_events = cur.rowcount
             self._conn.commit()
         return {"frames": deleted_frames, "assessments": deleted_assess,
-                "events": deleted_events}
+                "events": deleted_events, "rock_events": deleted_rock_events}
 
     def close(self) -> None:
         with self._lock:

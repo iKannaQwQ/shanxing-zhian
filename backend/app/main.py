@@ -224,6 +224,67 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             return {"items": []}
         return {"items": app.state.db.list_events(max(1, min(limit, 500)))}
 
+    @app.get("/api/v1/rock-events")
+    async def rock_events(limit: int = 50, offset: int = 0, status: str = "ALL") -> dict:
+        if not ready():
+            return {"items": [], "total": 0}
+        limit = max(1, min(limit, 200))
+        db: Database = app.state.db
+        return {
+            "items": db.list_rock_events(limit, max(0, offset), status),
+            "total": db.count_rock_events(status),
+            "limit": limit,
+            "offset": max(0, offset),
+        }
+
+    @app.patch("/api/v1/rock-events/{event_id}")
+    async def update_rock_event(event_id: int, payload: dict = Body(...)) -> Any:
+        if not ready():
+            return JSONResponse(status_code=503, content={"ok": False})
+        status = (payload or {}).get("status")
+        if status is not None and status not in ("OPEN", "ACKNOWLEDGED", "RESOLVED", "IGNORED"):
+            return JSONResponse(status_code=422,
+                                content={"ok": False, "code": "BAD_STATUS"})
+        note = (payload or {}).get("note")
+        updated = app.state.db.update_rock_event(event_id, note, status)
+        if not updated:
+            return JSONResponse(status_code=404, content={"ok": False, "code": "NOT_FOUND"})
+        return {"ok": True, "event": updated}
+
+    @app.get("/api/v1/stats/timeline")
+    async def timeline(minutes: int = 30, buckets: int = 30) -> dict:
+        """按时间分桶的风险/通行分布，供历史页画时间轴。"""
+        if not ready():
+            return {"buckets": [], "minutes": minutes}
+        minutes = max(1, min(minutes, 24 * 60))
+        buckets = max(1, min(buckets, 240))
+        db: Database = app.state.db
+        now = now_ns()
+        since = now - minutes * 60 * 1_000_000_000
+        rows = db.timeline_rows(since)
+        width = (now - since) // buckets
+
+        result = []
+        for index in range(buckets):
+            start = since + index * width
+            end = start + width
+            chunk = [r for r in rows if start <= r["ts_assessed_ns"] < end]
+            risks = [r["overall_risk"] for r in chunk]
+            worst = "UNKNOWN"
+            order = ["SAFE", "LOW", "MEDIUM", "HIGH", "UNKNOWN"]
+            if risks:
+                worst = max(risks, key=order.index)
+            result.append({
+                "start_ns": start,
+                "count": len(chunk),
+                "worst_risk": worst if risks else None,
+                "blocked": sum(1 for r in chunk
+                               if r["a_to_b"] == "BLOCKED" or r["b_to_a"] == "BLOCKED"),
+                "unknown": sum(1 for r in risks if r == "UNKNOWN"),
+            })
+        return {"buckets": result, "minutes": minutes, "since_ns": since,
+                "total": len(rows), "server_ns": now}
+
     @app.get("/api/v1/devices")
     async def devices() -> dict:
         if not ready():

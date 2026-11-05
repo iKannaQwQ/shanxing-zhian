@@ -4,6 +4,8 @@ import AdminLayout from './layouts/AdminLayout.vue'
 import HomeView from './views/user/HomeView.vue'
 import OverviewView from './views/admin/OverviewView.vue'
 import MonitorView from './views/admin/MonitorView.vue'
+import EventsView from './views/admin/EventsView.vue'
+import HistoryView from './views/admin/HistoryView.vue'
 
 export const router = createRouter({
   history: createWebHashHistory(),
@@ -19,6 +21,8 @@ export const router = createRouter({
       children: [
         { path: '', name: 'admin', component: OverviewView },
         { path: 'monitor', name: 'admin-monitor', component: MonitorView },
+        { path: 'events', name: 'admin-events', component: EventsView },
+        { path: 'history', name: 'admin-history', component: HistoryView },
       ],
     },
   ],

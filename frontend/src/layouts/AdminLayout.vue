@@ -8,8 +8,8 @@ const route = useRoute()
 const menu = [
   { path: '/admin', label: '运行总览', ready: true },
   { path: '/admin/monitor', label: '实时监控', ready: true },
-  { path: '/admin/events', label: '事件管理', ready: false },
-  { path: '/admin/history', label: '历史数据', ready: false },
+  { path: '/admin/events', label: '事件管理', ready: true },
+  { path: '/admin/history', label: '历史数据', ready: true },
   { path: '/admin/devices', label: '设备管理', ready: false },
 ]
 

@@ -1,8 +1,9 @@
-import type { AssessmentRow, DeviceRow, EventRow, StatusPayload } from './types'
+import type { AssessmentRow, DeviceRow, EventRow, RockEvent, StatusPayload, TimelineBucket } from './types'
 
 export type { AssessmentRow, DeviceRow, EventRow, StatusPayload } from './types'
 export type {
-  AlternativeStatus, AssessmentMessage, InferenceSource, Passability, RiskLevel,
+  AlternativeStatus, AssessmentMessage, EventStatus, InferenceSource, Passability,
+  RiskLevel, RockEvent, TimelineBucket,
 } from './types'
 
 const BASE = import.meta.env.VITE_API_BASE ?? ''
@@ -23,6 +24,24 @@ export const api = {
     ),
   events: (limit = 20) => getJSON<{ items: EventRow[] }>(`/api/v1/events?limit=${limit}`),
   devices: () => getJSON<{ items: DeviceRow[] }>('/api/v1/devices'),
+
+  rockEvents: (limit = 20, offset = 0, status = 'ALL') =>
+    getJSON<{ items: RockEvent[]; total: number }>(
+      `/api/v1/rock-events?limit=${limit}&offset=${offset}&status=${status}`),
+
+  updateRockEvent: async (id: number, patch: { note?: string; status?: string }) => {
+    const response = await fetch(`${BASE}/api/v1/rock-events/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    })
+    if (!response.ok) throw new Error(`${response.status} ${response.statusText}`)
+    return (await response.json()) as { ok: boolean; event: RockEvent }
+  },
+
+  timeline: (minutes = 30, buckets = 30) =>
+    getJSON<{ buckets: TimelineBucket[]; minutes: number; total: number }>(
+      `/api/v1/stats/timeline?minutes=${minutes}&buckets=${buckets}`),
 }
 
 /** 最新一帧的 RGB 地址（后端按 frame_id 提供）。 */

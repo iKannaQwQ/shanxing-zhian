@@ -98,6 +98,9 @@ New-NetFirewallRule -DisplayName "MountainRoad 8000" -Direction Inbound `
 | GET | `/api/v1/assessments?limit&offset` | 历史判定（分页） |
 | GET | `/api/v1/events?limit` | 事件流水 |
 | GET | `/api/v1/devices` | 设备列表（含 `online` / `silent_ms`） |
+| GET | `/api/v1/rock-events?limit&offset&status` | 落石事件（含备注与处理状态） |
+| PATCH | `/api/v1/rock-events/{id}` | 更新备注 / 处理状态 |
+| GET | `/api/v1/stats/timeline?minutes&buckets` | 分桶风险时间轴 |
 | POST | `/api/v1/devices/heartbeat` | 设备心跳 |
 | POST | `/api/v1/ingest/frame` | 上传帧（multipart，**202**） |
 | GET | `/api/v1/frames/pending?limit` | **AI worker 专用**，拉待处理帧 |
@@ -218,6 +221,12 @@ GET /api/v1/status
 | `frames` | `frame_id` `device_id` `ts_capture_ns` `ts_received_ns` `processed_ns` `width` `height` `jpeg_bytes` `depth_bytes` `status` `error` `artifact_dir` `rgb_path` `depth_path` `confidence_path` |
 | `assessments` | `frame_id` `ts_assessed_ns` `overall_risk` `system_status` `a_to_b` `b_to_a` `alternative_status` `road_coverage` `rock_count` `processing_ms` `json` |
 | `events` | `ts_ns` `frame_id` `device_id` `level` `code` `message` |
+| `rock_events` | `id` `ts_ns` `frame_id` `device_id` `risk_level` `rock_count` `note` `status` `updated_ns` |
+
+`rock_events.status`：`OPEN` → `ACKNOWLEDGED` → `RESOLVED` / `IGNORED`。
+判定结果里出现落石时自动登记一条（`frame_id` 唯一，重复不会重复建）。
+事件截图直接复用 `/api/v1/frames/{frame_id}/rgb`，不额外存副本——
+超出保留窗口后截图会 404，表格里显示「已清理」。
 
 `frames.status` 取值：`stored` → `processed` / `failed` / `expired`。
 
