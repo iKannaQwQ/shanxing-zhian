@@ -21,4 +21,7 @@ struct CaptureStats: Equatable {
 
     var residentMB: Double = 0
     var peakResidentMB: Double = 0
+    var startResidentMB: Double = 0
+    var trendMB: Double = 0
+    var memorySampleCount: Int = 0
 }

@@ -155,10 +155,15 @@ struct SessionView: View {
                         value: String(format: "%.3f ms · %d KB",
                                       manager.captureStats.confidenceCopyMs,
                                       manager.captureStats.confidenceBytes / 1024))
-                FactRow(label: "内存 常驻/峰值",
-                        value: String(format: "%.1f / %.1f MB",
+                FactRow(label: "内存 起始/当前/峰值",
+                        value: String(format: "%.0f / %.0f / %.0f MB",
+                                      manager.captureStats.startResidentMB,
                                       manager.captureStats.residentMB,
                                       manager.captureStats.peakResidentMB))
+                FactRow(label: "内存变化",
+                        value: String(format: "%+.1f MB（%d 个采样点）",
+                                      manager.captureStats.trendMB,
+                                      manager.captureStats.memorySampleCount))
                 FactRow(label: "运行时长",
                         value: String(format: "%.0f s", manager.captureStats.elapsedSeconds))
             } header: {

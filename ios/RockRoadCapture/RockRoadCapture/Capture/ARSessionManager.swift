@@ -175,8 +175,11 @@ final class ARSessionManager: NSObject, ObservableObject {
                      + "编码繁忙丢帧: \(c.droppedEncoderBusy)")
         lines.append("深度拷贝: \(String(format: "%.3f", c.depthCopyMs)) ms  \(c.depthBytes / 1024) KB   "
                      + "置信度拷贝: \(String(format: "%.3f", c.confidenceCopyMs)) ms  \(c.confidenceBytes / 1024) KB")
-        lines.append("内存: 常驻 \(String(format: "%.1f", c.residentMB)) MB   峰值 \(String(format: "%.1f", c.peakResidentMB)) MB   "
-                     + "运行 \(String(format: "%.0f", c.elapsedSeconds)) s")
+        lines.append("内存: 起始 \(String(format: "%.1f", c.startResidentMB)) MB   "
+                     + "当前 \(String(format: "%.1f", c.residentMB)) MB   "
+                     + "峰值 \(String(format: "%.1f", c.peakResidentMB)) MB   "
+                     + "变化 \(String(format: "%+.1f", c.trendMB)) MB")
+        lines.append("内存采样点: \(c.memorySampleCount)（每 5 s 一个）   运行 \(String(format: "%.0f", c.elapsedSeconds)) s")
         if let err = encoderStats.error { lines.append("编码错误: \(err)") }
         if let err = lastError { lines.append("错误: \(err)") }
         return lines.joined(separator: "\n")
@@ -342,7 +345,10 @@ extension ARSessionManager: ARSessionDelegate {
             depthBytes: depthBytes,
             confidenceBytes: confidenceBytes,
             residentMB: memory.residentMB,
-            peakResidentMB: memory.peakResidentMB)
+            peakResidentMB: memory.peakResidentMB,
+            startResidentMB: memory.startResidentMB,
+            trendMB: memory.trendMB,
+            memorySampleCount: memory.sampleCount)
 
         DispatchQueue.main.async {
             self.facts = snapshot
