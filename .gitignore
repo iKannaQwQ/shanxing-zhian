@@ -1,0 +1,48 @@
+# ---- 运行时产物 ----
+data/frames/
+data/artifacts/
+data/db/
+data/logs/
+data/models/
+
+# ---- 工具链（工程内自包含） ----
+.tools/
+.venv/
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+uv.lock
+
+# ---- C++ ----
+risk_engine/build/
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+
+# ---- 前端 ----
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# ---- Xcode ----
+ios/**/xcuserdata/
+ios/**/*.xcuserstate
+ios/**/DerivedData/
+ios/**/build/
+
+# ---- macOS / 编辑器 ----
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# ---- 本地配置 ----
+.env
+config/local.*.yaml

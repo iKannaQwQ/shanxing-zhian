@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0",
+  "msg_type": "perception_result",
+  "frame_id": "aaaaaaaa-0000-4000-8000-0000000000e1",
+  "device_id": "iphone12pro-sandbox-01",
+  "session_id": "22222222-2222-4222-8222-222222222222",
+  "seq": 900,
+  "ts_capture_ns": 1730000011000000000,
+  "ts_processed_ns": 1730000011300000000,
+  "processing_ms": 300.0,
+  "source": "SIMULATED",
+  "road": {
+    "status": "OK",
+    "coverage_ratio": 0.40,
+    "confidence": 0.88,
+    "mask_uri": null,
+    "road_frame_id": "sandbox_main_v1",
+    "sectors": [
+      {
+        "id": "S0", "s_start_m": 0.0, "s_end_m": 0.5, "width_m": 0.42,
+        "centerline_m": [[0.0, 0.0, 0.0], [0.0, 0.0, 0.5]],
+        "directions": ["A_TO_B", "B_TO_A"]
+      }
+    ]
+  },
+  "rocks": [
+    {
+      "rock_id": "R9",
+      "bbox_xyxy": [700.0, 500.0, 800.0, 580.0],
+      "score": 0.72,
+      "depth_source": "NONE",
+      "in_road_mask": true,
+      "height_m": 0.03,
+      "footprint_m2": 0.01,
+      "distance_m": 0.7,
+      "base_point_m": [0.0, 0.0, 0.7]
+    }
+  ],
+  "intrusions": [
+    { "rock_id": "R9", "sector_id": "S0", "overlap_ratio": 0.80, "remaining_width_m": 0.08 }
+  ],
+  "oncoming_traffic": { "status": "CONFIRMED_NONE_VISIBLE", "detections": [] },
+  "quality": {
+    "depth_valid_ratio": 0.85,
+    "depth_aligned_ok": true,
+    "observed_area_ratio": 0.9,
+    "visibility_horizon_m": 2.0,
+    "degraded_reasons": []
+  }
+}

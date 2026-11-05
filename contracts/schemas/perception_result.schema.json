@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mountain-road.local/schemas/perception_result.schema.json",
+  "title": "PerceptionResult",
+  "description": "perception -> risk_engine。只描述'观测到了什么'，不做通行判定。所有米制字段在深度不可用时必须为 null，禁止臆造。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "msg_type", "frame_id", "device_id", "session_id", "seq",
+    "ts_capture_ns", "ts_processed_ns", "source", "road", "rocks", "intrusions",
+    "oncoming_traffic", "quality"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "pattern": "^\\d+\\.\\d+$" },
+    "msg_type": { "const": "perception_result" },
+    "frame_id": { "type": "string", "format": "uuid" },
+    "device_id": { "type": "string", "minLength": 1 },
+    "session_id": { "type": "string", "format": "uuid" },
+    "seq": { "type": "integer", "minimum": 0 },
+    "ts_capture_ns": { "type": "integer", "minimum": 0 },
+    "ts_processed_ns": { "type": "integer", "minimum": 0 },
+    "processing_ms": { "type": "number", "minimum": 0 },
+    "source": {
+      "enum": ["LIVE", "REPLAY", "SIMULATED"],
+      "description": "SIMULATED 为合成/伪造数据，必须在 UI 显著标注；REPLAY 为历史帧离线重跑。"
+    },
+    "model_versions": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "road": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "coverage_ratio", "mask_uri", "sectors"],
+      "properties": {
+        "status": { "enum": ["OK", "FAILED"], "description": "FAILED 时下游一切方向必须判 UNKNOWN。" },
+        "coverage_ratio": {
+          "type": "number", "minimum": 0, "maximum": 1,
+          "description": "图像中可行驶区域占下视场比例。过低说明视野偏离或分割失败。"
+        },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "mask_uri": { "type": ["string", "null"], "description": "分割掩码 PNG 相对 URI；null 表示无掩码。" },
+        "road_frame_id": { "type": ["string", "null"] },
+        "sectors": {
+          "type": "array",
+          "description": "按弧长顺序排列的路段。direction 表示该段支持哪些通行方向。",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "s_start_m", "s_end_m", "width_m", "centerline_m", "directions"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "s_start_m": { "type": "number" },
+              "s_end_m": { "type": "number" },
+              "width_m": { "type": "number", "exclusiveMinimum": 0 },
+              "centerline_m": {
+                "type": "array", "minItems": 2,
+                "items": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 }
+              },
+              "directions": {
+                "type": "array", "minItems": 1, "uniqueItems": true,
+                "items": { "enum": ["A_TO_B", "B_TO_A"] }
+              }
+            }
+          }
+        }
+      }
+    },
+    "rocks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["rock_id", "bbox_xyxy", "score", "depth_source", "in_road_mask"],
+        "properties": {
+          "rock_id": { "type": "string", "minLength": 1 },
+          "bbox_xyxy": {
+            "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4,
+            "description": "RGB 像素坐标 (x1,y1,x2,y2)。"
+          },
+          "score": { "type": "number", "minimum": 0, "maximum": 1 },
+          "depth_source": {
+            "enum": ["LIDAR", "MONOCULAR", "NONE"],
+            "description": "NONE 表示无深度支撑，只能作为'疑似'，不得用于阻断判定。"
+          },
+          "in_road_mask": { "type": "boolean" },
+          "height_m": { "type": ["number", "null"], "description": "相对拟合路面平面的高度。" },
+          "footprint_m2": { "type": ["number", "null"] },
+          "distance_m": { "type": ["number", "null"], "description": "相机到落石基座的距离。" },
+          "base_point_m": {
+            "type": ["array", "null"], "items": { "type": "number" }, "minItems": 3, "maxItems": 3,
+            "description": "落石接地点，road_frame 坐标。"
+          }
+        }
+      }
+    },
+    "intrusions": {
+      "type": "array",
+      "description": "逐(落石, 路段)的几何侵入量。无深度支撑的落石不得出现在此列表。",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["rock_id", "sector_id", "overlap_ratio"],
+        "properties": {
+          "rock_id": { "type": "string" },
+          "sector_id": { "type": "string" },
+          "overlap_ratio": {
+            "type": "number", "minimum": 0, "maximum": 1,
+            "description": "落石在路面横断面上的占宽比。"
+          },
+          "remaining_width_m": { "type": ["number", "null"], "minimum": 0 },
+          "lateral_offset_m": { "type": ["number", "null"], "description": "落石中心相对路中心的横向偏移。" }
+        }
+      }
+    },
+    "oncoming_traffic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "enum": ["PRESENT", "CONFIRMED_NONE_VISIBLE", "UNVERIFIABLE"],
+          "description": "仅能对可视弧内作结论；盲弯外永远 UNVERIFIABLE，不得降级为 CONFIRMED_NONE_VISIBLE。"
+        },
+        "detections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["bbox_xyxy", "score"],
+            "properties": {
+              "bbox_xyxy": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 },
+              "score": { "type": "number", "minimum": 0, "maximum": 1 },
+              "distance_m": { "type": ["number", "null"] }
+            }
+          }
+        }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["depth_valid_ratio", "depth_aligned_ok", "observed_area_ratio", "degraded_reasons"],
+      "properties": {
+        "depth_valid_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "depth_aligned_ok": {
+          "type": "boolean",
+          "description": "深度与彩色配准是否通过自检。false 时禁止一切米制判定。"
+        },
+        "mask_confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "observed_area_ratio": {
+          "type": "number", "minimum": 0, "maximum": 1,
+          "description": "被有效观测(分割成功且深度有效)的路面占应观测路面比例。用于拒绝'没看到所以安全'。"
+        },
+        "visibility_horizon_m": {
+          "type": ["number", "null"],
+          "description": "沿路可见的最远距离；盲弯处受遮挡限制。"
+        },
+        "degraded_reasons": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "ROAD_SEG_FAILED", "LOW_DEPTH_VALIDITY", "DEPTH_ALIGN_FAILED",
+              "INSUFFICIENT_OBSERVATION", "LIMITED_TRACKING", "LOW_LIGHT",
+              "MODEL_LOW_CONFIDENCE", "NO_DEPTH_SOURCE"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

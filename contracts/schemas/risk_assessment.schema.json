@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mountain-road.local/schemas/risk_assessment.schema.json",
+  "title": "RiskAssessment",
+  "description": "risk_engine -> backend/前端。纯判定结果，必须自带 reasons 与 disclaimer_version。缺证据时一律 UNKNOWN，禁止给 PASSABLE。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "msg_type", "assessment_id", "frame_id", "device_id", "session_id", "seq",
+    "ts_assessed_ns", "engine", "overall_status", "per_direction", "alternative_passage",
+    "alerts", "reasons", "disclaimer_version"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "pattern": "^\\d+\\.\\d+$" },
+    "msg_type": { "const": "risk_assessment" },
+    "assessment_id": { "type": "string", "format": "uuid" },
+    "frame_id": { "type": "string", "format": "uuid" },
+    "device_id": { "type": "string", "minLength": 1 },
+    "session_id": { "type": "string", "format": "uuid" },
+    "seq": { "type": "integer", "minimum": 0 },
+    "ts_assessed_ns": { "type": "integer", "minimum": 0 },
+    "engine_ms": { "type": "number", "minimum": 0 },
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "const": "rock_risk" },
+        "version": { "type": "string" },
+        "config_hash": { "type": "string" },
+        "config_version": { "type": "string" }
+      }
+    },
+    "overall_status": {
+      "enum": ["PASSABLE", "RESTRICTED", "BLOCKED", "UNKNOWN", "DEGRADED"],
+      "description": "两个方向中的最不利者；DEGRADED 表示链路/输入降级，不等同于安全。"
+    },
+    "per_direction": {
+      "type": "array", "minItems": 0, "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["direction", "status", "confidence", "reasons"],
+        "properties": {
+          "direction": { "enum": ["A_TO_B", "B_TO_A"] },
+          "status": { "enum": ["PASSABLE", "RESTRICTED", "BLOCKED", "UNKNOWN"] },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "remaining_width_m": { "type": ["number", "null"], "minimum": 0 },
+          "blocking_rock_ids": { "type": "array", "items": { "type": "string" } },
+          "limiting_sector_id": { "type": ["string", "null"] },
+          "stability": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "stable_frames": { "type": "integer", "minimum": 0 },
+              "since_ns": { "type": "integer", "minimum": 0 }
+            }
+          },
+          "reasons": { "$ref": "#/$defs/reasons" }
+        }
+      }
+    },
+    "alternative_passage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "verifiable", "reasons"],
+      "properties": {
+        "available": {
+          "type": ["boolean", "null"],
+          "description": "null = 无法判定。仅在全部安全条件成立时才可为 true。"
+        },
+        "verifiable": {
+          "type": "boolean",
+          "description": "是否存在足够观测以支持结论；盲弯超视距时为 false。"
+        },
+        "min_gap_m": { "type": ["number", "null"], "minimum": 0 },
+        "gap_sector_id": { "type": ["string", "null"] },
+        "oncoming": {
+          "enum": ["PRESENT", "CONFIRMED_NONE_VISIBLE", "UNVERIFIABLE", "UNKNOWN"]
+        },
+        "reasons": { "$ref": "#/$defs/reasons" }
+      }
+    },
+    "alerts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["level", "code", "message"],
+        "properties": {
+          "level": { "enum": ["INFO", "WARNING", "CRITICAL"] },
+          "code": { "$ref": "#/$defs/reason_code" },
+          "message": { "type": "string", "maxLength": 200 },
+          "direction": { "enum": ["A_TO_B", "B_TO_A", "BOTH"] }
+        }
+      }
+    },
+    "reasons": { "$ref": "#/$defs/reasons" },
+    "inputs_echo": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "引擎实际使用的输入摘要，用于排障与事后审计。",
+      "properties": {
+        "source": { "enum": ["LIVE", "REPLAY", "SIMULATED"] },
+        "road_status": { "enum": ["OK", "FAILED"] },
+        "depth_valid_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "observed_area_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "visibility_horizon_m": { "type": ["number", "null"] },
+        "rock_count": { "type": "integer", "minimum": 0 },
+        "oncoming_status": { "type": "string" }
+      }
+    },
+    "disclaimer_version": {
+      "const": "0.1",
+      "description": "实验性辅助评估声明版本。前端必须展示对应文案。"
+    }
+  },
+  "$defs": {
+    "reason_code": {
+      "enum": [
+        "ROAD_SEG_FAILED",
+        "LOW_DEPTH_VALIDITY",
+        "DEPTH_ALIGN_FAILED",
+        "INSUFFICIENT_OBSERVATION",
+        "NO_DEPTH_SOURCE",
+        "PARTIAL_ROCK_INTRUSION",
+        "FULL_ROCK_INTRUSION",
+        "BLOCKED_BY_ROCK",
+        "REMAINING_WIDTH_SUFFICIENT",
+        "REMAINING_WIDTH_INSUFFICIENT",
+        "BLIND_CURVE_UNVERIFIABLE",
+        "VISIBILITY_HORIZON_TOO_SHORT",
+        "ONCOMING_TRAFFIC_PRESENT",
+        "GAP_TOO_NARROW",
+        "NO_ALTERNATIVE_GAP",
+        "ALTERNATIVE_NOT_REQUIRED",
+        "NO_ROCK_DETECTED_FULL_OBSERVATION",
+        "DEGRADED_INPUT",
+        "POLICY_DEFAULT_DENY"
+      ]
+    },
+    "reasons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message"],
+        "properties": {
+          "code": { "$ref": "#/$defs/reason_code" },
+          "message": { "type": "string", "maxLength": 200 },
+          "sector_id": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

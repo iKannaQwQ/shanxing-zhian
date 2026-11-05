@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "msg_type": "perception_result",
+  "frame_id": "aaaaaaaa-0000-4000-8000-00000000000c",
+  "device_id": "iphone12pro-sandbox-01",
+  "session_id": "22222222-2222-4222-8222-222222222222",
+  "seq": 301,
+  "ts_capture_ns": 1730000007000000000,
+  "ts_processed_ns": 1730000007240000000,
+  "processing_ms": 240.0,
+  "source": "SIMULATED",
+  "model_versions": { "road_seg": "yolop-sandbox-ft-v0", "rock_det": "yolo11n-sandbox-ft-v0" },
+  "road": {
+    "status": "FAILED",
+    "coverage_ratio": 0.05,
+    "confidence": 0.18,
+    "mask_uri": null,
+    "road_frame_id": null,
+    "sectors": []
+  },
+  "rocks": [],
+  "intrusions": [],
+  "oncoming_traffic": { "status": "UNVERIFIABLE", "detections": [] },
+  "quality": {
+    "depth_valid_ratio": 0.22,
+    "depth_aligned_ok": false,
+    "mask_confidence": 0.18,
+    "observed_area_ratio": 0.05,
+    "visibility_horizon_m": null,
+    "degraded_reasons": ["ROAD_SEG_FAILED", "LOW_DEPTH_VALIDITY", "DEPTH_ALIGN_FAILED", "INSUFFICIENT_OBSERVATION"]
+  }
+}

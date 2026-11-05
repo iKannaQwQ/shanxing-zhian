@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0",
+  "msg_type": "risk_assessment",
+  "assessment_id": "bbbbbbbb-0000-4000-8000-00000000000b",
+  "frame_id": "aaaaaaaa-0000-4000-8000-00000000000b",
+  "device_id": "iphone12pro-sandbox-01",
+  "session_id": "22222222-2222-4222-8222-222222222222",
+  "seq": 240,
+  "ts_assessed_ns": 1730000005270000000,
+  "engine_ms": 2.8,
+  "engine": { "name": "rock_risk", "version": "0.1.0", "config_version": "policy-1", "config_hash": "sha256:dev" },
+  "overall_status": "BLOCKED",
+  "per_direction": [
+    {
+      "direction": "A_TO_B",
+      "status": "BLOCKED",
+      "confidence": 0.88,
+      "remaining_width_m": 0.03,
+      "blocking_rock_ids": ["R1"],
+      "limiting_sector_id": "S1",
+      "stability": { "stable_frames": 6, "since_ns": 1730000004800000000 },
+      "reasons": [
+        { "code": "FULL_ROCK_INTRUSION", "message": "S1 段落石占路 92%", "sector_id": "S1" },
+        { "code": "REMAINING_WIDTH_INSUFFICIENT", "message": "剩余 0.03 m，小于车宽", "sector_id": "S1" },
+        { "code": "BLOCKED_BY_ROCK", "message": "A→B 方向被 R1 阻断", "sector_id": "S1" }
+      ]
+    },
+    {
+      "direction": "B_TO_A",
+      "status": "RESTRICTED",
+      "confidence": 0.71,
+      "remaining_width_m": 0.16,
+      "blocking_rock_ids": ["R1"],
+      "limiting_sector_id": "S1",
+      "stability": { "stable_frames": 4, "since_ns": 1730000004900000000 },
+      "reasons": [
+        { "code": "PARTIAL_ROCK_INTRUSION", "message": "B→A 侧余宽 0.16 m，需减速", "sector_id": "S1" },
+        { "code": "REMAINING_WIDTH_INSUFFICIENT", "message": "余宽低于安全阈值", "sector_id": "S1" }
+      ]
+    }
+  ],
+  "alternative_passage": {
+    "available": false,
+    "verifiable": true,
+    "min_gap_m": 0.31,
+    "gap_sector_id": "S0",
+    "oncoming": "CONFIRMED_NONE_VISIBLE",
+    "reasons": [
+      { "code": "GAP_TOO_NARROW", "message": "最大可绕行间隙 0.31 m，小于车宽加余量" }
+    ]
+  },
+  "alerts": [
+    { "level": "CRITICAL", "code": "BLOCKED_BY_ROCK", "message": "A→B 方向被落石阻断", "direction": "A_TO_B" }
+  ],
+  "reasons": [
+    { "code": "BLOCKED_BY_ROCK", "message": "S1 段存在完全阻断", "sector_id": "S1" }
+  ],
+  "inputs_echo": {
+    "source": "SIMULATED",
+    "road_status": "OK",
+    "depth_valid_ratio": 0.90,
+    "observed_area_ratio": 0.93,
+    "visibility_horizon_m": 2.2,
+    "rock_count": 1,
+    "oncoming_status": "CONFIRMED_NONE_VISIBLE"
+  },
+  "disclaimer_version": "0.1"
+}

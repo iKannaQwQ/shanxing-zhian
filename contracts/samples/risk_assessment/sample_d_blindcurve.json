@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0",
+  "msg_type": "risk_assessment",
+  "assessment_id": "bbbbbbbb-0000-4000-8000-00000000000d",
+  "frame_id": "aaaaaaaa-0000-4000-8000-00000000000d",
+  "device_id": "iphone12pro-sandbox-01",
+  "session_id": "22222222-2222-4222-8222-222222222222",
+  "seq": 380,
+  "ts_assessed_ns": 1730000009290000000,
+  "engine_ms": 2.4,
+  "engine": { "name": "rock_risk", "version": "0.1.0", "config_version": "policy-1", "config_hash": "sha256:dev" },
+  "overall_status": "UNKNOWN",
+  "per_direction": [
+    {
+      "direction": "A_TO_B",
+      "status": "RESTRICTED",
+      "confidence": 0.66,
+      "remaining_width_m": 0.21,
+      "blocking_rock_ids": ["R2"],
+      "limiting_sector_id": "U1",
+      "stability": { "stable_frames": 5, "since_ns": 1730000008800000000 },
+      "reasons": [
+        { "code": "PARTIAL_ROCK_INTRUSION", "message": "U 弯段 R2 占路 48%", "sector_id": "U1" },
+        { "code": "REMAINING_WIDTH_INSUFFICIENT", "message": "余宽 0.21 m，低于安全阈值", "sector_id": "U1" }
+      ]
+    },
+    {
+      "direction": "B_TO_A",
+      "status": "UNKNOWN",
+      "confidence": 0.0,
+      "remaining_width_m": null,
+      "blocking_rock_ids": [],
+      "limiting_sector_id": "U1",
+      "stability": { "stable_frames": 0, "since_ns": 1730000009290000000 },
+      "reasons": [
+        { "code": "BLIND_CURVE_UNVERIFIABLE", "message": "U 弯遮挡，无法确认对向来车", "sector_id": "U1" },
+        { "code": "VISIBILITY_HORIZON_TOO_SHORT", "message": "可视视距仅 0.9 m", "sector_id": "U1" }
+      ]
+    }
+  ],
+  "alternative_passage": {
+    "available": null,
+    "verifiable": false,
+    "min_gap_m": null,
+    "gap_sector_id": null,
+    "oncoming": "UNVERIFIABLE",
+    "reasons": [
+      { "code": "BLIND_CURVE_UNVERIFIABLE", "message": "超出可视视距，禁止宣称替代通行安全" },
+      { "code": "ONCOMING_TRAFFIC_PRESENT", "message": "对向状态不可确认" }
+    ]
+  },
+  "alerts": [
+    { "level": "WARNING", "code": "BLIND_CURVE_UNVERIFIABLE", "message": "盲弯段，需人工确认", "direction": "B_TO_A" }
+  ],
+  "reasons": [
+    { "code": "VISIBILITY_HORIZON_TOO_SHORT", "message": "U 弯可视距离不足" }
+  ],
+  "inputs_echo": {
+    "source": "SIMULATED",
+    "road_status": "OK",
+    "depth_valid_ratio": 0.81,
+    "observed_area_ratio": 0.72,
+    "visibility_horizon_m": 0.9,
+    "rock_count": 1,
+    "oncoming_status": "UNVERIFIABLE"
+  },
+  "disclaimer_version": "0.1"
+}

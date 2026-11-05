@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0",
+  "msg_type": "risk_assessment",
+  "assessment_id": "bbbbbbbb-0000-4000-8000-00000000000c",
+  "frame_id": "aaaaaaaa-0000-4000-8000-00000000000c",
+  "device_id": "iphone12pro-sandbox-01",
+  "session_id": "22222222-2222-4222-8222-222222222222",
+  "seq": 301,
+  "ts_assessed_ns": 1730000007250000000,
+  "engine_ms": 1.9,
+  "engine": { "name": "rock_risk", "version": "0.1.0", "config_version": "policy-1", "config_hash": "sha256:dev" },
+  "overall_status": "UNKNOWN",
+  "per_direction": [
+    {
+      "direction": "A_TO_B",
+      "status": "UNKNOWN",
+      "confidence": 0.0,
+      "remaining_width_m": null,
+      "blocking_rock_ids": [],
+      "limiting_sector_id": null,
+      "stability": { "stable_frames": 0, "since_ns": 1730000007250000000 },
+      "reasons": [
+        { "code": "ROAD_SEG_FAILED", "message": "道路分割失败，无法定义通行区域" },
+        { "code": "POLICY_DEFAULT_DENY", "message": "证据不足，按策略拒绝给出通行结论" }
+      ]
+    },
+    {
+      "direction": "B_TO_A",
+      "status": "UNKNOWN",
+      "confidence": 0.0,
+      "remaining_width_m": null,
+      "blocking_rock_ids": [],
+      "limiting_sector_id": null,
+      "stability": { "stable_frames": 0, "since_ns": 1730000007250000000 },
+      "reasons": [
+        { "code": "ROAD_SEG_FAILED", "message": "道路分割失败，无法定义通行区域" },
+        { "code": "POLICY_DEFAULT_DENY", "message": "证据不足，按策略拒绝给出通行结论" }
+      ]
+    }
+  ],
+  "alternative_passage": {
+    "available": null,
+    "verifiable": false,
+    "min_gap_m": null,
+    "gap_sector_id": null,
+    "oncoming": "UNKNOWN",
+    "reasons": [
+      { "code": "DEGRADED_INPUT", "message": "深度有效率 0.22 且配准失败，禁止米制推断" }
+    ]
+  },
+  "alerts": [
+    { "level": "WARNING", "code": "DEGRADED_INPUT", "message": "感知输入质量不足，状态不可判定", "direction": "BOTH" }
+  ],
+  "reasons": [
+    { "code": "ROAD_SEG_FAILED", "message": "道路分割失败" },
+    { "code": "LOW_DEPTH_VALIDITY", "message": "深度有效率仅 0.22" }
+  ],
+  "inputs_echo": {
+    "source": "SIMULATED",
+    "road_status": "FAILED",
+    "depth_valid_ratio": 0.22,
+    "observed_area_ratio": 0.05,
+    "visibility_horizon_m": null,
+    "rock_count": 0,
+    "oncoming_status": "UNVERIFIABLE"
+  },
+  "disclaimer_version": "0.1"
+}

@@ -1,0 +1,49 @@
+{
+  "schema_version": "1.0",
+  "msg_type": "risk_assessment",
+  "assessment_id": "bbbbbbbb-0000-4000-8000-0000000000e2",
+  "frame_id": "aaaaaaaa-0000-4000-8000-0000000000e2",
+  "device_id": "iphone12pro-sandbox-01",
+  "session_id": "22222222-2222-4222-8222-222222222222",
+  "seq": 901,
+  "ts_assessed_ns": 1730000011400000000,
+  "engine": { "name": "rock_risk", "version": "0.1.0", "config_version": "policy-1" },
+  "overall_status": "PASSABLE",
+  "per_direction": [
+    {
+      "direction": "A_TO_B",
+      "status": "PASSABLE",
+      "confidence": 0.95,
+      "remaining_width_m": 0.42,
+      "blocking_rock_ids": [],
+      "limiting_sector_id": "S0",
+      "reasons": [
+        { "code": "NO_ROCK_DETECTED_FULL_OBSERVATION", "message": "未见落石" }
+      ]
+    }
+  ],
+  "alternative_passage": {
+    "available": true,
+    "verifiable": false,
+    "min_gap_m": null,
+    "gap_sector_id": null,
+    "oncoming": "UNVERIFIABLE",
+    "reasons": [
+      { "code": "ALTERNATIVE_NOT_REQUIRED", "message": "占位" }
+    ]
+  },
+  "alerts": [],
+  "reasons": [
+    { "code": "NO_ROCK_DETECTED_FULL_OBSERVATION", "message": "未见落石" }
+  ],
+  "inputs_echo": {
+    "source": "SIMULATED",
+    "road_status": "FAILED",
+    "depth_valid_ratio": 0.2,
+    "observed_area_ratio": 0.1,
+    "visibility_horizon_m": null,
+    "rock_count": 0,
+    "oncoming_status": "UNVERIFIABLE"
+  },
+  "disclaimer_version": "0.1"
+}

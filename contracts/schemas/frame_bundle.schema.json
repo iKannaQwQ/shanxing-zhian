@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mountain-road.local/schemas/frame_bundle.schema.json",
+  "title": "FrameBundle",
+  "description": "iOS 采集端 -> 后端。对应 multipart/form-data 的 meta part。二进制 part: rgb(image/jpeg) 必选, depth(application/octet-stream) 必选, confidence 可选。禁止用 base64 内嵌二进制。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "msg_type", "frame_id", "device_id", "session_id",
+    "seq", "ts_capture_ns", "capture", "intrinsics", "depth"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "pattern": "^\\d+\\.\\d+$", "examples": ["1.0"] },
+    "msg_type": { "const": "frame_bundle" },
+    "frame_id": { "type": "string", "format": "uuid" },
+    "device_id": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "session_id": { "type": "string", "format": "uuid" },
+    "seq": {
+      "type": "integer", "minimum": 0,
+      "description": "会话内单调递增帧号。用于排序与丢帧检测，不依赖跨设备时钟。"
+    },
+    "ts_capture_ns": {
+      "type": "integer", "minimum": 0,
+      "description": "设备单调时钟(纳秒)。仅用于同设备内间隔计算，禁止与主机时钟直接相减。"
+    },
+    "capture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height", "bytes", "format", "orientation"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "format": { "const": "jpeg" },
+        "jpeg_quality": { "type": "number", "minimum": 0.1, "maximum": 1.0 },
+        "orientation": {
+          "enum": ["landscape_right", "portrait", "portrait_upside_down", "landscape_left"],
+          "description": "与 ARKit capturedImage 的原生方向一致；下游据此决定是否旋转。"
+        }
+      }
+    },
+    "intrinsics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fx", "fy", "cx", "cy", "reference_width", "reference_height"],
+      "description": "ARKit 内参对应 reference_width/height 的分辨率，通常与 capture 不同，必须按比例换算到实际图像尺寸。",
+      "properties": {
+        "fx": { "type": "number", "exclusiveMinimum": 0 },
+        "fy": { "type": "number", "exclusiveMinimum": 0 },
+        "cx": { "type": "number" },
+        "cy": { "type": "number" },
+        "reference_width": { "type": "integer", "minimum": 1 },
+        "reference_height": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "depth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height", "encoding", "scale_factor", "invalid_value", "aligned_to_rgb", "source"],
+      "description": "深度图元数据。0 或 invalid_value 视为无效，禁止把无效值当作'很近'。",
+      "properties": {
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "encoding": { "enum": ["uint16_mm", "float32_m"] },
+        "scale_factor": {
+          "type": "number", "exclusiveMinimum": 0,
+          "description": "原始像素值 -> 米 的乘数。uint16_mm 时为 0.001；float32_m 时为 1.0。"
+        },
+        "invalid_value": { "type": "number" },
+        "aligned_to_rgb": {
+          "type": "boolean",
+          "description": "深度像素与 RGB 像素是否为同一相机坐标系下的像素对齐关系(仅缩放差异)。false 时 perception 必须做显式配准，不得假设对齐。"
+        },
+        "source": { "enum": ["arkit.sceneDepth", "arkit.capturedDepthData"] }
+      }
+    },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height", "encoding"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "encoding": { "const": "uint8" }
+      }
+    },
+    "pose": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["matrix", "tracking_state"],
+      "properties": {
+        "matrix": {
+          "type": "array", "items": { "type": "number" },
+          "minItems": 16, "maxItems": 16,
+          "description": "列主序 4x4 相机->世界 变换(ARKit camera.transform 语义)。"
+        },
+        "tracking_state": { "enum": ["normal", "limited_initializing", "limited_excessive_motion", "limited_insufficient_features", "not_available"] }
+      }
+    },
+    "delivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "queue_depth": { "type": "integer", "minimum": 0 },
+        "attempt": { "type": "integer", "minimum": 1 },
+        "dropped_since_last": { "type": "integer", "minimum": 0 },
+        "encode_ms": { "type": "number", "minimum": 0 }
+      }
+    },
+    "note": { "type": "string", "maxLength": 200 }
+  }
+}
