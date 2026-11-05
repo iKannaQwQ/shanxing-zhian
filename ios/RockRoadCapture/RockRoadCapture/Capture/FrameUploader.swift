@@ -67,6 +67,7 @@ final class FrameUploader: ObservableObject {
     private var ingestURL: URL?
     private var counters = Stats()
     private var latencies: [Double] = []
+    private var reportedDrops = 0
 
     init() {
         let configuration = URLSessionConfiguration.ephemeral
@@ -152,7 +153,9 @@ final class FrameUploader: ObservableObject {
         let item = queue.removeFirst()
         busy = true
 
-        let request = makeRequest(item.bundle, url: url)
+        let drops = max(0, counters.droppedOverflow - reportedDrops)
+        reportedDrops = counters.droppedOverflow
+        let request = makeRequest(item.bundle, url: url, droppedSinceLast: drops)
         let started = CACurrentMediaTime()
 
         session.dataTask(with: request) { [weak self] data, response, error in
@@ -268,12 +271,13 @@ final class FrameUploader: ObservableObject {
         DispatchQueue.main.async { self.stats = snapshot }
     }
 
-    private func makeRequest(_ bundle: FrameBundle, url: URL) -> URLRequest {
+    private func makeRequest(_ bundle: FrameBundle, url: URL,
+                             droppedSinceLast: Int = 0) -> URLRequest {
         let boundary = "----RoadCapture-\(UUID().uuidString)"
         var parts: [MultipartBuilder.Part] = [
             MultipartBuilder.Part(name: "meta", filename: nil,
                                   contentType: "application/json",
-                                  data: bundle.metadataJSON),
+                                  data: bundle.metadataJSON(droppedSinceLast: droppedSinceLast)),
             MultipartBuilder.Part(name: "rgb", filename: "rgb.jpg",
                                   contentType: "image/jpeg", data: bundle.rgbJPEG),
             MultipartBuilder.Part(name: "depth", filename: "depth.bin",

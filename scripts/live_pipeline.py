@@ -15,6 +15,7 @@ YOLOP 道路分割和 C++ 风险引擎，并把 RoadStatus 原路返回给手机
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import sys
 import threading
@@ -150,58 +151,70 @@ async def ingest(meta: str = Form(...),
     except Exception as exc:  # noqa: BLE001
         return _reject("DECODE_FAILED", str(exc))
 
-    # 串行处理：HTTP 层天然形成背压，不会在服务端堆出无界队列
+    # 处理放到线程池：pipeline.process() 是同步的重计算（50–90 ms），
+    # 直接在事件循环里跑会阻塞 uvicorn 接收/解析下一帧的 multipart。
+    # 加锁保证仍然串行处理，但传输与解析可以和计算重叠。
+    try:
+        return await asyncio.to_thread(_process_frame, payload, (rgb_image, depth_map,
+                                                                  confidence_map, intrinsics),
+                                       (rgb_bytes, depth_bytes, conf_bytes), started)
+    except Exception as exc:  # noqa: BLE001
+        return _reject("PIPELINE_FAILED", f"{type(exc).__name__}: {exc}")
+
+
+def _process_frame(payload: dict, decoded: tuple, raw: tuple, started: float) -> dict:
+    rgb_image, depth_map, confidence_map, intrinsics = decoded
+    rgb_bytes, depth_bytes, conf_bytes = raw
     with _state["lock"]:
-        try:
-            t_perception = time.perf_counter()
-            report = _state["pipeline"].process(FrameInput(
-                frame_id=payload["frame_id"],
-                timestamp_ns=payload["ts_capture_ns"],
-                rgb=rgb_image,
-                depth=depth_map,
-                intrinsics=intrinsics,
-                confidence=confidence_map,
-                rocks=None,
-                source="REPLAY"))
-            perception_ms = (time.perf_counter() - t_perception) * 1000
+        t_perception = time.perf_counter()
+        report = _state["pipeline"].process(FrameInput(
+            frame_id=payload["frame_id"],
+            timestamp_ns=payload["ts_capture_ns"],
+            rgb=rgb_image,
+            depth=depth_map,
+            intrinsics=intrinsics,
+            confidence=confidence_map,
+            rocks=None,
+            source="REPLAY"))
+        perception_ms = (time.perf_counter() - t_perception) * 1000
 
-            if _state["simulate_rock"] != "none":
-                _inject_synthetic_rock(report, _state["simulate_rock"])
-            if not _state["rock_detector"] and _state["simulate_rock"] == "none":
-                # 没有落石检测器就不能声称"没发现落石" -> 显式降级
-                report["system_status"] = "DEGRADED"
-                report["reasons"].append({
-                    "code": "ROCK_DETECTOR_UNAVAILABLE",
-                    "message": "未部署落石检测器，落石类结论不可用"})
+        if _state["simulate_rock"] != "none":
+            _inject_synthetic_rock(report, _state["simulate_rock"])
+        if not _state["rock_detector"] and _state["simulate_rock"] == "none":
+            report["system_status"] = "DEGRADED"
+            report["reasons"].append({
+                "code": "ROCK_DETECTOR_UNAVAILABLE",
+                "message": "未部署落石检测器，落石类结论不可用"})
 
-            t_engine = time.perf_counter()
-            status = _state["engine"].assess(report)
-            engine_ms = (time.perf_counter() - t_engine) * 1000
+        t_engine = time.perf_counter()
+        status = _state["engine"].assess(report)
+        engine_ms = (time.perf_counter() - t_engine) * 1000
 
-            _state["processed"] += 1
-            _state["last_status"] = {
+        _state["processed"] += 1
+        _state["last_status"] = {
+            "frame_id": payload["frame_id"],
+            "overall_risk": status["overall_risk"],
+            "system_status": status["system_status"]}
+
+        if _state["save_dir"] is not None:
+            _persist(_state["save_dir"], payload, rgb_bytes, depth_bytes, conf_bytes)
+
+        total_ms = (time.perf_counter() - started) * 1000
+        dropped = payload.get("delivery", {}).get("dropped_since_last", 0)
+        if _state["processed"] % 10 == 0 or dropped:
+            print(f"[{_state['processed']:>5}] {payload['frame_id'][:8]} "
+                  f"road={report['road_mask_status']} risk={status['overall_risk']:<8} "
+                  f"sys={status['system_status']:<10} "
+                  f"感知 {perception_ms:.0f}ms 引擎 {engine_ms:.1f}ms 总 {total_ms:.0f}ms"
+                  + (f"  客户端丢帧 {dropped}" if dropped else ""), flush=True)
+
+        return {"ok": True,
                 "frame_id": payload["frame_id"],
-                "overall_risk": status["overall_risk"],
-                "system_status": status["system_status"]}
-
-            if _state["save_dir"] is not None:
-                _persist(_state["save_dir"], payload, rgb_bytes, depth_bytes, conf_bytes)
-
-            total_ms = (time.perf_counter() - started) * 1000
-            if _state["processed"] % 10 == 0:
-                print(f"[{_state['processed']:>5}] {payload['frame_id'][:8]} "
-                      f"road={report['road_mask_status']} rocks={len(report['rockfalls'])} "
-                      f"risk={status['overall_risk']:<8} sys={status['system_status']:<10} "
-                      f"感知 {perception_ms:.0f}ms 引擎 {engine_ms:.1f}ms 总 {total_ms:.0f}ms")
-
-            return {"ok": True,
-                    "frame_id": payload["frame_id"],
-                    "processing_ms": round(total_ms, 1),
-                    "perception_ms": round(perception_ms, 1),
-                    "engine_ms": round(engine_ms, 2),
-                    "road_status": status}
-        except Exception as exc:  # noqa: BLE001
-            return _reject("PIPELINE_FAILED", f"{type(exc).__name__}: {exc}")
+                "processing_ms": round(total_ms, 1),
+                "perception_ms": round(perception_ms, 1),
+                "engine_ms": round(engine_ms, 2),
+                "dropped_since_last": dropped,
+                "road_status": status}
 
 
 def _inject_synthetic_rock(report: dict, level: str) -> None:
@@ -256,7 +269,7 @@ def _persist(directory: Path, metadata: dict, rgb: bytes, depth: bytes,
 def _reject(code: str, message: str) -> JSONResponse:
     _state["rejected"] += 1
     _state["last_error"] = f"{code}: {message}"
-    print(f"[REJECT] {code}: {message}")
+    print(f"[REJECT] {code}: {message}", flush=True)
     return JSONResponse(status_code=422,
                         content={"ok": False, "code": code, "message": message})
 

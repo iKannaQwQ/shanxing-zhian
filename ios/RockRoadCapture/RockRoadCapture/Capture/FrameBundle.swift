@@ -53,7 +53,9 @@ struct FrameBundle {
     var confidence: RawPlane?
 
     /// multipart/form-data 中 `meta` part 的内容。
-    var metadata: [String: Any] {
+    /// - Parameter droppedSinceLast: 上次成功上传以来客户端丢弃的帧数，
+    ///   让下游知道数据有缺口，而不是假装连续。
+    func metadata(droppedSinceLast: Int = 0) -> [String: Any] {
         var dict: [String: Any] = [
             "schema_version": schemaVersion,
             "msg_type": "frame_bundle",
@@ -94,7 +96,7 @@ struct FrameBundle {
             "delivery": [
                 "queue_depth": 0,
                 "attempt": 1,
-                "dropped_since_last": 0,
+                "dropped_since_last": max(0, droppedSinceLast),
             ],
         ]
 
@@ -109,12 +111,13 @@ struct FrameBundle {
         return dict
     }
 
-    var metadataJSON: Data {
-        (try? JSONSerialization.data(withJSONObject: metadata,
-                                     options: [.prettyPrinted, .sortedKeys])) ?? Data()
+    func metadataJSON(droppedSinceLast: Int = 0) -> Data {
+        (try? JSONSerialization.data(
+            withJSONObject: metadata(droppedSinceLast: droppedSinceLast),
+            options: [.prettyPrinted, .sortedKeys])) ?? Data()
     }
 
     var depthBytes: Int { depth.data.count }
     var confidenceBytes: Int { confidence?.data.count ?? 0 }
-    var totalBytes: Int { rgbJPEG.count + depthBytes + confidenceBytes + metadataJSON.count }
+    var totalBytes: Int { rgbJPEG.count + depthBytes + confidenceBytes + metadataJSON().count }
 }

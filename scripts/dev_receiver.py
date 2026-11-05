@@ -111,7 +111,7 @@ async def ingest(meta: str = Form(...),
         mb = stats["bytes"] / 1024 / 1024
         print(f"[{stats['ok']:>5}] seq={metadata['seq']:<5} "
               f"rgb={len(rgb_bytes)//1024}KB depth={len(depth_bytes)//1024}KB "
-              f"total={total//1024}KB  {elapsed_ms:.1f}ms  累计 {mb:.0f}MB")
+              f"total={total//1024}KB  {elapsed_ms:.1f}ms  累计 {mb:.0f}MB", flush=True)
 
     return {"ok": True, "frame_id": frame_id, "total_bytes": total,
             "sha256": {"rgb": hashlib.sha256(rgb_bytes).hexdigest()[:16],
@@ -122,7 +122,7 @@ async def ingest(meta: str = Form(...),
 def _reject(code: str, message: str) -> JSONResponse:
     stats["rejected"] += 1
     LAST_ERROR["message"] = f"{code}: {message}"
-    print(f"[REJECT] {code}: {message}")
+    print(f"[REJECT] {code}: {message}", flush=True)
     return JSONResponse(status_code=422, content={"ok": False, "code": code,
                                                   "message": message})
 

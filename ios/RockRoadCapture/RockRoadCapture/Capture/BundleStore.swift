@@ -71,7 +71,7 @@ final class BundleStore {
             do {
                 try FileManager.default.createDirectory(at: directory,
                                                         withIntermediateDirectories: true)
-                try bundle.metadataJSON.write(to: directory.appendingPathComponent("metadata.json"))
+                try bundle.metadataJSON().write(to: directory.appendingPathComponent("metadata.json"))
                 try bundle.rgbJPEG.write(to: directory.appendingPathComponent("rgb.jpg"))
                 try bundle.depth.data.write(to: directory.appendingPathComponent("depth.bin"))
                 if let confidence = bundle.confidence {
@@ -82,7 +82,7 @@ final class BundleStore {
                 self.stats.saved += 1
                 self.stats.lastDirectory = directory.lastPathComponent
                 self.stats.lastTotalBytes = bundle.totalBytes
-                self.stats.lastMetadataBytes = bundle.metadataJSON.count
+                self.stats.lastMetadataBytes = bundle.metadataJSON().count
                 self.stats.lastJpegBytes = bundle.rgbJPEG.count
                 self.stats.lastDepthBytes = bundle.depthBytes
                 self.stats.lastConfidenceBytes = bundle.confidenceBytes
