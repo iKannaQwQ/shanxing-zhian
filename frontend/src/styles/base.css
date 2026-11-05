@@ -193,3 +193,7 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 12px;
 }
+
+/* 窄屏下表格允许横向滚动，避免列被压扁 */
+.table-scroll { overflow-x: auto; }
+.table-scroll .el-table { min-width: 860px; }

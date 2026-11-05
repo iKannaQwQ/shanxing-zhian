@@ -115,6 +115,7 @@ function thermalText(device: DeviceRow): string {
         <span class="muted">每 5 秒刷新</span>
       </div>
 
+      <div class="table-scroll">
       <el-table :data="devices" v-loading="loading" size="small" stripe>
         <el-table-column label="设备" min-width="190">
           <template #default="{ row }">
@@ -180,6 +181,7 @@ function thermalText(device: DeviceRow): string {
 
         <el-table-column prop="frames" label="累计帧" width="100" />
       </el-table>
+      </div>
 
       <div v-if="!devices.length && !loading" class="muted empty">
         还没有设备上报。iPhone 开始采集后会自动出现在这里。

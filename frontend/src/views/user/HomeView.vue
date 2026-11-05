@@ -13,8 +13,6 @@ import { useSystemStatus } from '../../composables/useSystemStatus'
 const { connected, last, received, lastLiveAt, error: wsError } = useStatusStream()
 const { status, error: statusError, fetchedAt } = useSystemStatus(3000)
 
-const BUILD_TAG = 'web m2.2'
-
 /**
  * 每秒自增的时钟。
  * 过期是**时间函数**，不能用「轮询返回的布尔值」直接显示——
@@ -161,8 +159,6 @@ const note = computed(() => riskNote[risk.value] ?? '')
       style="margin-bottom: 12px"
     />
 
-    <div class="build mono">{{ BUILD_TAG }}</div>
-
     <!-- 总体状态 -->
     <section class="hero" :class="riskClass">
       <div class="hero-label">道路总体状态</div>
@@ -255,7 +251,6 @@ const note = computed(() => riskNote[risk.value] ?? '')
 
 .stamp { color: var(--muted); }
 .muted { color: var(--muted); }
-.build { font-size: 10px; color: #9ca3af; text-align: right; margin-top: -6px; }
 
 /* 总体状态 */
 .hero {

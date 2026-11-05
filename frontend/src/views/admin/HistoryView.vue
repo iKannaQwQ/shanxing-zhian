@@ -143,6 +143,7 @@ function timeText(ns: number): string {
         <span>历史判定记录</span>
         <span class="muted">点击行查看图像</span>
       </div>
+      <div class="table-scroll">
       <el-table :data="rows" v-loading="loading" size="small" stripe
                 @row-click="(row: AssessmentRow) => preview = row">
         <el-table-column label="时间" width="170">
@@ -175,6 +176,7 @@ function timeText(ns: number): string {
           </template>
         </el-table-column>
       </el-table>
+      </div>
 
       <el-pagination
         style="margin-top: 12px"
