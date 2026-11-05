@@ -107,9 +107,11 @@ async def ingest(meta: str = Form(...),
     stats["bytes"] += total
     elapsed_ms = (time.perf_counter() - started) * 1000
 
-    print(f"[{stats['ok']:>5}] {frame_id[:8]} seq={metadata['seq']:<5} "
-          f"rgb={len(rgb_bytes)//1024}KB depth={len(depth_bytes)//1024}KB "
-          f"total={total//1024}KB  {elapsed_ms:.1f}ms")
+    if stats["ok"] % 10 == 0:
+        mb = stats["bytes"] / 1024 / 1024
+        print(f"[{stats['ok']:>5}] seq={metadata['seq']:<5} "
+              f"rgb={len(rgb_bytes)//1024}KB depth={len(depth_bytes)//1024}KB "
+              f"total={total//1024}KB  {elapsed_ms:.1f}ms  累计 {mb:.0f}MB")
 
     return {"ok": True, "frame_id": frame_id, "total_bytes": total,
             "sha256": {"rgb": hashlib.sha256(rgb_bytes).hexdigest()[:16],

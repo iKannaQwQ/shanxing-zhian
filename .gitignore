@@ -1,5 +1,6 @@
 # ---- 运行时产物 ----
 data/frames/
+data/incoming/
 data/artifacts/
 data/db/
 data/logs/
