@@ -191,6 +191,7 @@ final class ARSessionManager: NSObject, ObservableObject {
                      + "当前 \(String(format: "%.1f", c.residentMB)) MB   "
                      + "峰值 \(String(format: "%.1f", c.peakResidentMB)) MB   "
                      + "变化 \(String(format: "%+.1f", c.trendMB)) MB")
+        lines.append("内存序列: \(MemoryProbe.seriesText())")
         lines.append("内存采样点: \(c.memorySampleCount)（每 5 s 一个）   运行 \(String(format: "%.0f", c.elapsedSeconds)) s")
         lines.append("热状态: \(c.thermalState)   低电量模式: \(c.lowPowerMode ? "开" : "关")")
         if let err = encoderStats.error { lines.append("编码错误: \(err)") }
@@ -301,21 +302,24 @@ extension ARSessionManager: ARSessionDelegate {
 
         // --- RGB 编码（独立队列；按预览频率节流，不跟采集同频）---
         let previewDue = frame.timestamp - lastEncodeStart >= previewInterval
-        if previewDue, beginEncodeIfIdle() {
-            lastEncodeStart = frame.timestamp
-            encoderQueue.async { [weak self] in
-                let output = FrameEncoder.encode(frame.capturedImage)
-                // 只保留缩略图：整幅 1920x1440 BGRA 是 11 MB，
-                // 长期持有会让常驻内存被预览图吃掉。
-                let thumbnail = output.image?.preparingThumbnail(of: CGSize(width: 640, height: 480))
-                DispatchQueue.main.async {
-                    self?.rgbPreview = thumbnail ?? output.image
-                    self?.encoderStats = output.stats
+        if previewDue {
+            if beginEncodeIfIdle() {
+                lastEncodeStart = frame.timestamp
+                encoderQueue.async { [weak self] in
+                    let output = FrameEncoder.encode(frame.capturedImage)
+                    // 只保留缩略图：整幅 1920x1440 BGRA 是 11 MB。
+                    let thumbnail = output.image?
+                        .preparingThumbnail(of: CGSize(width: 640, height: 480))
+                    DispatchQueue.main.async {
+                        self?.rgbPreview = thumbnail ?? output.image
+                        self?.encoderStats = output.stats
+                    }
+                    self?.endEncode()
                 }
-                self?.endEncode()
+            } else {
+                // 只有"该预览却排不上队"才算丢帧
+                droppedEncoderBusy += 1
             }
-        } else {
-            droppedEncoderBusy += 1
         }
 
         // --- 周期性发布快照 ---
@@ -324,10 +328,12 @@ extension ARSessionManager: ARSessionDelegate {
 
         let snapshot = makeFacts(frame: frame, depthCopy: depthCopy,
                                  confidenceCopy: confidenceCopy, depthStats: depthStats)
+        // 深度/置信度与 capturedImage 同属 landscape-right，必须带相同方向，
+        // 否则相对 RGB 会横躺 90°。
         let depthImage = depthCopy.flatMap { Visualizers.depthColorized($0) }
-            .map { UIImage(cgImage: $0) }
+            .map { UIImage(cgImage: $0, scale: 1, orientation: .right) }
         let confidenceImage = confidenceCopy.flatMap { Visualizers.confidenceColorized($0) }
-            .map { UIImage(cgImage: $0) }
+            .map { UIImage(cgImage: $0, scale: 1, orientation: .right) }
 
         let memory = MemoryProbe.current()
         let stats = CaptureStats(

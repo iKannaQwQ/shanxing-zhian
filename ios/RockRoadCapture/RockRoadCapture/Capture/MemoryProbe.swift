@@ -45,6 +45,15 @@ enum MemoryProbe {
                         sampleCount: samples.count)
     }
 
+    /// 供诊断文本使用的内存序列（MB，四舍五入）。
+    /// 只看单点无法区分"建图增长后趋稳"与"持续泄漏"，曲线可以。
+    static func seriesText() -> String {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !samples.isEmpty else { return "-" }
+        return samples.map { String(format: "%.0f", $0) }.joined(separator: " → ")
+    }
+
     static func resetPeak() {
         let mb = residentMB()
         lock.lock()
