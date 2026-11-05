@@ -46,7 +46,7 @@ final class FrameUploader: ObservableObject {
 
     private let stateQueue = DispatchQueue(label: "com.mountain.roadcapture.upload")
     private let session: URLSession
-    private let capacity = 16
+    private let capacity = 32
     private let maxAttempts = 3
 
     private var queue: [Item] = []

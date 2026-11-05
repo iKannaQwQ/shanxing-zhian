@@ -15,6 +15,8 @@ final class StatusStream: NSObject, ObservableObject {
     private var currentURL: URL?
     private var shouldRun = false
     private var reconnectScheduled = false
+    private var stopping = false
+    private var messages = 0
 
     func update(url: URL?) {
         guard url != currentURL else { return }
@@ -28,6 +30,7 @@ final class StatusStream: NSObject, ObservableObject {
     }
 
     func stop() {
+        stopping = true
         shouldRun = false
         task?.cancel(with: .goingAway, reason: nil)
         task = nil
@@ -43,6 +46,7 @@ final class StatusStream: NSObject, ObservableObject {
             DispatchQueue.main.async { self.state = "未配置" }
             return
         }
+        stopping = false
         let socket = session.webSocketTask(with: url)
         task = socket
         socket.resume()
@@ -55,9 +59,10 @@ final class StatusStream: NSObject, ObservableObject {
             guard let self else { return }
             switch result {
             case .failure(let error):
+                // 主动停止时收到的收尾错误不显示，避免把"正常关闭"报成故障
+                guard !self.stopping else { return }
                 DispatchQueue.main.async {
-                    self.state = (error as NSError).code == 54
-                        ? "已关闭" : "断开: \(error.localizedDescription)"
+                    self.state = "断开: \(error.localizedDescription)"
                 }
                 self.scheduleReconnect()
             case .success(let message):
@@ -65,8 +70,9 @@ final class StatusStream: NSObject, ObservableObject {
                    let data = text.data(using: .utf8),
                    let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                     let snapshot = RiskSnapshot.parse(root)
+                    self.messages += 1
                     DispatchQueue.main.async {
-                        self.state = "已连接"
+                        self.state = "已连接（已收 \(self.messages) 条）"
                         if let snapshot { self.lastSnapshot = snapshot }
                     }
                 }

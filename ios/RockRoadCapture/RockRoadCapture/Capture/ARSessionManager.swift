@@ -270,6 +270,9 @@ final class ARSessionManager: NSObject, ObservableObject {
         lines.append("--- M5 上传 ---")
         lines.append("服务器: \(UploadSettings.shared.ingestURL?.absoluteString ?? "未配置")")
         lines.append("状态流: \(streamState)   \(UploadSettings.shared.wsURL?.absoluteString ?? "-")")
+        let r = lastRiskResult
+        lines.append("端到端风险: \(r.overallRisk) / \(r.systemStatus)   双向: \(r.passAToB)·\(r.passBToA)   "
+                     + "替代: \(r.alternative)   处理 \(String(format: "%.0f", r.processingMs)) ms")
         lines.append("已发送: \(u.sent)   失败: \(u.failed)   队列: \(u.queued)/\(u.capacity)   "
                      + "溢出丢弃: \(u.droppedOverflow)   质量门控丢弃: \(u.droppedQuality)   "
                      + "无地址丢弃: \(u.droppedNoServer)")
