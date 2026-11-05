@@ -22,6 +22,8 @@
 		AA00000000000000000000CD /* MemoryProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000BB /* MemoryProbe.swift */; };
 		AA00000000000000000000CE /* DepthSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000BC /* DepthSampler.swift */; };
 		AA00000000000000000000CF /* CaptureStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000BD /* CaptureStats.swift */; };
+		AA00000000000000000000D4 /* RawPlane.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000D5 /* RawPlane.swift */; };
+		AA00000000000000000000D6 /* Visualizers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000D7 /* Visualizers.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +43,8 @@
 		AA00000000000000000000BB /* MemoryProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryProbe.swift; sourceTree = "<group>"; };
 		AA00000000000000000000BC /* DepthSampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepthSampler.swift; sourceTree = "<group>"; };
 		AA00000000000000000000BD /* CaptureStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureStats.swift; sourceTree = "<group>"; };
+		AA00000000000000000000D5 /* RawPlane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RawPlane.swift; sourceTree = "<group>"; };
+		AA00000000000000000000D7 /* Visualizers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Visualizers.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -104,6 +108,8 @@
 				AA00000000000000000000BB /* MemoryProbe.swift */,
 				AA00000000000000000000BC /* DepthSampler.swift */,
 				AA00000000000000000000BD /* CaptureStats.swift */,
+				AA00000000000000000000D5 /* RawPlane.swift */,
+				AA00000000000000000000D7 /* Visualizers.swift */,
 			);
 			path = Capture;
 			sourceTree = "<group>";
@@ -191,6 +197,8 @@
 				AA00000000000000000000CD /* MemoryProbe.swift in Sources */,
 				AA00000000000000000000CE /* DepthSampler.swift in Sources */,
 				AA00000000000000000000CF /* CaptureStats.swift in Sources */,
+				AA00000000000000000000D4 /* RawPlane.swift in Sources */,
+				AA00000000000000000000D6 /* Visualizers.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

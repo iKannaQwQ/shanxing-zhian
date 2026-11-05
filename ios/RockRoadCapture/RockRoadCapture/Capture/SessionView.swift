@@ -47,25 +47,49 @@ struct SessionView: View {
     // MARK: - 并排对比
 
     private var comparisonStrip: some View {
-        HStack(spacing: 6) {
-            tile(title: "ARKit 预览") {
-                if manager.isRunning {
-                    ARPreviewView(session: manager.session)
-                } else {
-                    placeholder(manager.statusText)
+        VStack(spacing: 0) {
+            HStack(spacing: 6) {
+                tile(title: "ARKit 预览") {
+                    if manager.isRunning {
+                        ARPreviewView(session: manager.session)
+                    } else {
+                        placeholder(manager.statusText)
+                    }
+                }
+                tile(title: "自转 RGB") {
+                    if let image = manager.rgbPreview {
+                        Image(uiImage: image).resizable().scaledToFit()
+                    } else {
+                        placeholder(manager.isRunning ? "等待首帧…" : "未采集")
+                    }
                 }
             }
-            tile(title: "自转 RGB") {
-                if let image = manager.rgbPreview {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
-                } else {
-                    placeholder(manager.isRunning ? "等待首帧…" : "未采集")
+            .frame(height: 158)
+
+            HStack(spacing: 6) {
+                tile(title: "深度伪彩 0.2–3.0 m") {
+                    if let image = manager.depthPreview {
+                        Image(uiImage: image)
+                            .resizable()
+                            .interpolation(.none)
+                            .scaledToFit()
+                    } else {
+                        placeholder(manager.isRunning ? "等待首帧…" : "未采集")
+                    }
+                }
+                tile(title: "置信度 低/中/高") {
+                    if let image = manager.confidencePreview {
+                        Image(uiImage: image)
+                            .resizable()
+                            .interpolation(.none)
+                            .scaledToFit()
+                    } else {
+                        placeholder(manager.isRunning ? "等待首帧…" : "未采集")
+                    }
                 }
             }
+            .frame(height: 122)
         }
-        .frame(height: 180)
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
         .background(Color.black)

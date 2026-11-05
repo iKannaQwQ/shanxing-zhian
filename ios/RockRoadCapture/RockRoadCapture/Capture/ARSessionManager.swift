@@ -24,6 +24,10 @@ final class ARSessionManager: NSObject, ObservableObject {
     /// M2-c：节流与资源占用。
     @Published private(set) var captureStats = CaptureStats()
 
+    /// M3：从拷贝后的 RawPlane 渲染的伪彩色预览。
+    @Published private(set) var depthPreview: UIImage?
+    @Published private(set) var confidencePreview: UIImage?
+
     let session = ARSession()
 
     /// 只有支持 sceneDepth 的设备才允许开始采集（M1 已确认本项目设备支持）。
@@ -136,6 +140,8 @@ final class ARSessionManager: NSObject, ObservableObject {
             self.isRunning = false
             self.facts = FrameFacts()
             self.rgbPreview = nil
+            self.depthPreview = nil
+            self.confidencePreview = nil
         }
         setStatus("已停止")
     }
@@ -228,31 +234,6 @@ final class ARSessionManager: NSObject, ObservableObject {
         encodeLock.unlock()
     }
 
-    /// 一个平面的原始拷贝，**保留原始 bytesPerRow**（含可能的 padding）。
-    private struct PlaneCopy {
-        var data: Data
-        var width: Int
-        var height: Int
-        var bytesPerRow: Int
-        var pixelFormat: OSType
-    }
-
-    private static func copyPlane(_ buffer: CVPixelBuffer, plane: Int) -> PlaneCopy? {
-        guard CVPixelBufferLockBaseAddress(buffer, .readOnly) == kCVReturnSuccess else {
-            return nil
-        }
-        defer { CVPixelBufferUnlockBaseAddress(buffer, .readOnly) }
-        guard let base = CVPixelBufferGetBaseAddressOfPlane(buffer, plane) else { return nil }
-        let width = CVPixelBufferGetWidthOfPlane(buffer, plane)
-        let height = CVPixelBufferGetHeightOfPlane(buffer, plane)
-        let bytesPerRow = CVPixelBufferGetBytesPerRowOfPlane(buffer, plane)
-        let size = bytesPerRow * height
-        guard size > 0 else { return nil }
-        let data = Data(bytes: base, count: size)
-        return PlaneCopy(data: data, width: width, height: height,
-                         bytesPerRow: bytesPerRow,
-                         pixelFormat: CVPixelBufferGetPixelFormatType(buffer))
-    }
 }
 
 // MARK: - ARSessionDelegate
@@ -289,15 +270,15 @@ extension ARSessionManager: ARSessionDelegate {
     private func capture(frame: ARFrame, sceneDepth: ARDepthData) {
         // --- 深度原始拷贝 ---
         let depthStart = CFAbsoluteTimeGetCurrent()
-        let depthCopy = Self.copyPlane(sceneDepth.depthMap, plane: 0)
+        let depthCopy = RawPlane.copy(from: sceneDepth.depthMap)
         depthCopyMs = (CFAbsoluteTimeGetCurrent() - depthStart) * 1000
         if let depthCopy { depthBytes = depthCopy.data.count }
 
         // --- 置信度原始拷贝 ---
-        var confidenceCopy: PlaneCopy?
+        var confidenceCopy: RawPlane?
         if let confidenceMap = sceneDepth.confidenceMap {
             let start = CFAbsoluteTimeGetCurrent()
-            confidenceCopy = Self.copyPlane(confidenceMap, plane: 0)
+            confidenceCopy = RawPlane.copy(from: confidenceMap)
             confidenceCopyMs = (CFAbsoluteTimeGetCurrent() - start) * 1000
             if let confidenceCopy { confidenceBytes = confidenceCopy.data.count }
         }
@@ -332,6 +313,11 @@ extension ARSessionManager: ARSessionDelegate {
 
         let snapshot = makeFacts(frame: frame, depthCopy: depthCopy,
                                  confidenceCopy: confidenceCopy, depthStats: depthStats)
+        let depthImage = depthCopy.flatMap { Visualizers.depthColorized($0) }
+            .map { UIImage(cgImage: $0) }
+        let confidenceImage = confidenceCopy.flatMap { Visualizers.confidenceColorized($0) }
+            .map { UIImage(cgImage: $0) }
+
         let memory = MemoryProbe.current()
         let stats = CaptureStats(
             targetFPS: targetFPS,
@@ -356,13 +342,15 @@ extension ARSessionManager: ARSessionDelegate {
         DispatchQueue.main.async {
             self.facts = snapshot
             self.captureStats = stats
+            self.depthPreview = depthImage
+            self.confidencePreview = confidenceImage
             self.statusText = "采集中"
         }
     }
 
     private func makeFacts(frame: ARFrame,
-                           depthCopy: PlaneCopy?,
-                           confidenceCopy: PlaneCopy?,
+                           depthCopy: RawPlane?,
+                           confidenceCopy: RawPlane?,
                            depthStats: DepthSampler.Stats?) -> FrameFacts {
         let rgb = frame.capturedImage
         var snapshot = FrameFacts()
