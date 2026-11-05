@@ -12,6 +12,8 @@ struct CaptureStats: Equatable {
 
     var produced: Int = 0
     var skippedByThrottle: Int = 0
+    var packWaitMs: Double = 0
+    var packBuildMs: Double = 0
     var droppedEncoderBusy: Int = 0
 
     var depthCopyMs: Double = 0

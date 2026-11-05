@@ -82,6 +82,8 @@ final class ARSessionManager: NSObject, ObservableObject {
     // 节流
     private var lastCaptureTimestamp: TimeInterval = 0
     private var produced = 0
+    private var packWaitMs: Double = 0
+    private var packBuildMs: Double = 0
     private var skippedByThrottle = 0
     private var droppedEncoderBusy = 0
 
@@ -249,6 +251,7 @@ final class ARSessionManager: NSObject, ObservableObject {
                      + "JPEG编码: \(String(format: "%.2f", encoderStats.encodeMs)) ms  "
                      + "体积: \(encoderStats.jpegBytes / 1024) KB")
         lines.append("--- 采集节流 ---")
+        lines.append("打包 等待 \(String(format: "%.1f", c.packWaitMs)) ms / 计算 \(String(format: "%.1f", c.packBuildMs)) ms")
         lines.append("目标FPS: \(c.targetFPS)   实测采集FPS: \(String(format: "%.1f", c.captureFPS))   "
                      + "已产出: \(c.produced)   节流跳过: \(c.skippedByThrottle)   "
                      + "编码繁忙丢帧: \(c.droppedEncoderBusy)")
@@ -264,6 +267,7 @@ final class ARSessionManager: NSObject, ObservableObject {
         if let err = encoderStats.error { lines.append("编码错误: \(err)") }
         let b = bundleStats
         lines.append("--- M4 打包 ---")
+        lines.append("版本: \(BuildInfo.tag)")
         lines.append("已打包: \(b.produced)   已保存: \(b.saved)/\(b.saveLimit)   最近: \(b.directory)")
         lines.append("metadata \(b.metadataBytes) B   rgb \(b.jpegBytes) B   "
                      + "depth \(b.depthBytes) B   conf \(b.confidenceBytes) B   合计 \(b.totalBytes) B")
@@ -450,12 +454,16 @@ extension ARSessionManager: ARSessionDelegate {
             producedBundles += 1
             let depthForPack = depthCopy
             let confidenceForPack = confidenceCopy
+            let enqueuedAt = CACurrentMediaTime()
             encoderQueue.async { [weak self] in
                 guard let self else { return }
+                let startedAt = CACurrentMediaTime()
+                self.packWaitMs = (startedAt - enqueuedAt) * 1000
                 let output = FramePackager.build(frame: frame,
                                                  snapshot: frameSnapshot,
                                                  depth: depthForPack,
                                                  confidence: confidenceForPack)
+                self.packBuildMs = (CACurrentMediaTime() - startedAt) * 1000
                 if let bundle = output.bundle {
                     self.bundleStore.save(bundle)
                     if uploadReady {
@@ -501,6 +509,8 @@ extension ARSessionManager: ARSessionDelegate {
             elapsedSeconds: CACurrentMediaTime() - startedAt,
             produced: produced,
             skippedByThrottle: skippedByThrottle,
+            packWaitMs: packWaitMs,
+            packBuildMs: packBuildMs,
             droppedEncoderBusy: droppedEncoderBusy,
             depthCopyMs: depthCopyMs,
             confidenceCopyMs: confidenceCopyMs,
