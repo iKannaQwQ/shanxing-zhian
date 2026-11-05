@@ -23,6 +23,9 @@ from .worker import FrameWorker
 from .ws import ConnectionManager
 
 
+GAP_EVENT_INTERVAL_NS = 10 * 1_000_000_000
+
+
 async def _cleanup_loop(db: Database, settings: Settings) -> None:
     """按保留窗口定期清理，避免 SQLite 无限增长。"""
     while True:
@@ -61,6 +64,7 @@ def create_app(settings: Settings | None = None,
         app.state.worker = worker
         app.state.settings = settings
         app.state.started_at = time.time()
+        app.state.client_gaps = {}
 
         cleanup = asyncio.create_task(_cleanup_loop(db, settings), name="retention")
         print(f"[backend] 就绪 db={settings.db_path} 队列={settings.queue_capacity} "
@@ -200,9 +204,19 @@ def create_app(settings: Settings | None = None,
         db.upsert_device(metadata["device_id"], received_ns)
 
         if dropped:
-            db.insert_event(received_ns, metadata["frame_id"], metadata["device_id"],
-                            "WARNING", "CLIENT_FRAME_GAP",
-                            f"客户端报告此前丢弃了 {dropped} 帧")
+            # 逐帧记录会把事件流刷屏，掩盖真正重要的风险变化。
+            # 按设备聚合：10 秒最多一条，累计这段时间的丢弃数。
+            device_id = metadata["device_id"]
+            gaps = app.state.client_gaps
+            stats = gaps.setdefault(device_id, {"total": 0, "last_ns": 0})
+            stats["total"] += dropped
+            if received_ns - stats["last_ns"] >= GAP_EVENT_INTERVAL_NS:
+                db.insert_event(received_ns, metadata["frame_id"], device_id,
+                                "WARNING", "CLIENT_FRAME_GAP",
+                                f"过去 {GAP_EVENT_INTERVAL_NS // 1_000_000_000} 秒累计丢弃 "
+                                f"{stats['total']} 帧（客户端队列溢出）")
+                stats["total"] = 0
+                stats["last_ns"] = received_ns
 
         outcome = await app.state.worker.submit({
             "frame_id": metadata["frame_id"],

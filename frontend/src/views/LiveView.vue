@@ -68,6 +68,7 @@ const riskClass = computed(() => risk.value.toLowerCase())
 const riskText = computed(() => RISK_TEXT[risk.value] ?? risk.value)
 const riskNote = computed(() => RISK_NOTE[risk.value] ?? '')
 const qualityOk = computed(() => current.value?.system_status === 'OK')
+const reasons = computed(() => current.value?.reasons ?? [])
 
 const aToB = computed(() => current.value?.passability?.A_TO_B ?? 'UNKNOWN')
 const bToA = computed(() => current.value?.passability?.B_TO_A ?? 'UNKNOWN')
@@ -120,6 +121,10 @@ function eventClass(level: string): string {
         处理 {{ current?.processing_ms ? current.processing_ms.toFixed(0) : '—' }} ms
       </div>
       <div class="hero-note">{{ riskNote }}</div>
+      <div v-if="reasons.length" class="hero-codes">
+        理由：
+        <span v-for="code in reasons" :key="code" class="code-chip">{{ code }}</span>
+      </div>
     </section>
 
     <div class="grid">
@@ -182,6 +187,23 @@ function eventClass(level: string): string {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 10px;
+}
+
+.hero-codes {
+  margin-top: 8px;
+  font-size: 12px;
+  opacity: 0.9;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.code-chip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: rgba(255, 255, 255, 0.18);
+  padding: 1px 7px;
+  border-radius: 5px;
 }
 
 .big-value.passable { color: var(--risk-safe); }

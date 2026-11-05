@@ -1,5 +1,22 @@
 import type { AssessmentMessage, Passability } from './client'
 
+/** 从 assessments.json 列里取出理由码（数据库行不单独存 reasons）。 */
+function reasonsFromJson(raw: unknown): string[] {
+  if (typeof raw !== 'string') return []
+  try {
+    const parsed = JSON.parse(raw) as { reasons?: Array<{ code?: string }> }
+    if (Array.isArray(parsed.reasons)) {
+      return parsed.reasons
+        .map((item) => item?.code)
+        .filter((code): code is string => typeof code === 'string')
+        .slice(0, 4)
+    }
+  } catch {
+    /* 列内容不合法就忽略 */
+  }
+  return []
+}
+
 /** 把数据库行转成与 WebSocket 推送一致的消息结构。 */
 export function rowToMessage(row: Record<string, unknown>): AssessmentMessage {
   return {
@@ -20,6 +37,6 @@ export function rowToMessage(row: Record<string, unknown>): AssessmentMessage {
     rock_count: Number(row.rock_count ?? 0),
     processing_ms: Number(row.processing_ms ?? 0),
     dropped_since_last: 0,
-    reasons: [],
+    reasons: reasonsFromJson(row.json),
   }
 }
