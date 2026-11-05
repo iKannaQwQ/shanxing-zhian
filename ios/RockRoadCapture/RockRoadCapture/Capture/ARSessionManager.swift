@@ -180,6 +180,7 @@ final class ARSessionManager: NSObject, ObservableObject {
                      + "峰值 \(String(format: "%.1f", c.peakResidentMB)) MB   "
                      + "变化 \(String(format: "%+.1f", c.trendMB)) MB")
         lines.append("内存采样点: \(c.memorySampleCount)（每 5 s 一个）   运行 \(String(format: "%.0f", c.elapsedSeconds)) s")
+        lines.append("热状态: \(c.thermalState)   低电量模式: \(c.lowPowerMode ? "开" : "关")")
         if let err = encoderStats.error { lines.append("编码错误: \(err)") }
         if let err = lastError { lines.append("错误: \(err)") }
         return lines.joined(separator: "\n")
@@ -344,6 +345,8 @@ extension ARSessionManager: ARSessionDelegate {
             confidenceCopyMs: confidenceCopyMs,
             depthBytes: depthBytes,
             confidenceBytes: confidenceBytes,
+            thermalState: Self.describe(ProcessInfo.processInfo.thermalState),
+            lowPowerMode: ProcessInfo.processInfo.isLowPowerModeEnabled,
             residentMB: memory.residentMB,
             peakResidentMB: memory.peakResidentMB,
             startResidentMB: memory.startResidentMB,
@@ -420,6 +423,16 @@ extension ARSessionManager: ARSessionDelegate {
 
     func sessionInterruptionEnded(_ session: ARSession) {
         setStatus("会话已恢复")
+    }
+
+    private static func describe(_ state: ProcessInfo.ThermalState) -> String {
+        switch state {
+        case .nominal: return "正常"
+        case .fair: return "偏热"
+        case .serious: return "过热"
+        case .critical: return "严重过热"
+        @unknown default: return "未知"
+        }
     }
 
     private static func describe(_ state: ARCamera.TrackingState) -> String {

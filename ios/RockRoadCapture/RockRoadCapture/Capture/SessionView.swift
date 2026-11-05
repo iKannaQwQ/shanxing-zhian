@@ -166,6 +166,9 @@ struct SessionView: View {
                                       manager.captureStats.memorySampleCount))
                 FactRow(label: "运行时长",
                         value: String(format: "%.0f s", manager.captureStats.elapsedSeconds))
+                FactRow(label: "热状态",
+                        value: manager.captureStats.thermalState
+                            + (manager.captureStats.lowPowerMode ? " · 低电量模式" : ""))
             } header: {
                 Text("采集节流（M2-c）")
             } footer: {

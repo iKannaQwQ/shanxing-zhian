@@ -19,6 +19,9 @@ struct CaptureStats: Equatable {
     var depthBytes: Int = 0
     var confidenceBytes: Int = 0
 
+    var thermalState: String = "-"
+    var lowPowerMode: Bool = false
+
     var residentMB: Double = 0
     var peakResidentMB: Double = 0
     var startResidentMB: Double = 0
