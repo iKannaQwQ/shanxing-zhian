@@ -21,7 +21,8 @@ enum FramePackager {
     static func build(frame: ARFrame,
                       snapshot: FrameSnapshot,
                       depth: RawPlane?,
-                      confidence: RawPlane?) -> Output {
+                      confidence: RawPlane?,
+                      quality: CGFloat = jpegQuality) -> Output {
         guard let depth else {
             return Output(bundle: nil, image: nil, stats: EncoderStats(),
                           error: "缺少深度拷贝")
@@ -30,7 +31,7 @@ enum FramePackager {
         let encoded = FrameEncoder.encode(frame.capturedImage,
                                           targetWidth: outputWidth,
                                           targetHeight: outputHeight,
-                                          quality: jpegQuality)
+                                          quality: quality)
         guard let jpeg = encoded.jpeg, let image = encoded.image else {
             return Output(bundle: nil, image: nil, stats: encoded.stats,
                           error: encoded.stats.error ?? "RGB 编码失败")

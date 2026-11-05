@@ -82,6 +82,11 @@ final class ARSessionManager: NSObject, ObservableObject {
     // 节流
     private var lastCaptureTimestamp: TimeInterval = 0
     private var produced = 0
+    private var currentQuality: Double = 0.72
+    private var thermalLabel = "正常"
+    private var thermalTransitions = 0
+    private var thermalTimer: Timer?
+    private var startedEpoch: TimeInterval = 0
     private var packWaitMs: Double = 0
     private var packBuildMs: Double = 0
     private var skippedByThrottle = 0
@@ -191,7 +196,12 @@ final class ARSessionManager: NSObject, ObservableObject {
         firstFrameTimestamp = 0
         uploader.reset()
         startedAt = CACurrentMediaTime()
+        startedEpoch = Date().timeIntervalSince1970
         MemoryProbe.resetPeak()
+        currentQuality = ThermalPolicy.setting(for: ProcessInfo.processInfo.thermalState).jpegQuality
+        thermalLabel = ThermalPolicy.setting(for: ProcessInfo.processInfo.thermalState).label
+        startThermalMonitor()
+        sendHeartbeat(reason: "start")
         statusStream.start()
 
         session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
@@ -210,6 +220,8 @@ final class ARSessionManager: NSObject, ObservableObject {
 
     func stop() {
         session.pause()
+        thermalTimer?.invalidate()
+        thermalTimer = nil
         statusStream.stop()
         DispatchQueue.main.async {
             self.isRunning = false
@@ -263,6 +275,8 @@ final class ARSessionManager: NSObject, ObservableObject {
                      + "变化 \(String(format: "%+.1f", c.trendMB)) MB")
         lines.append("内存序列: \(MemoryProbe.seriesText())")
         lines.append("内存采样点: \(c.memorySampleCount)（每 5 s 一个）   运行 \(String(format: "%.0f", c.elapsedSeconds)) s")
+        lines.append("热策略: \(c.thermalLabel)  目标 \(c.targetFPS)fps  质量 \(String(format: "%.2f", c.effectiveQuality))  "
+                     + "降级次数 \(c.thermalTransitions)")
         lines.append("热状态: \(c.thermalState)   低电量模式: \(c.lowPowerMode ? "开" : "关")")
         if let err = encoderStats.error { lines.append("编码错误: \(err)") }
         let b = bundleStats
@@ -335,6 +349,44 @@ final class ARSessionManager: NSObject, ObservableObject {
             @unknown default: return "limited_insufficient_features"
             }
         }
+    }
+
+    // MARK: - 热自适应
+
+    private func startThermalMonitor() {
+        thermalTimer?.invalidate()
+        thermalTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+            self?.evaluateThermal()
+        }
+    }
+
+    private func evaluateThermal() {
+        let setting = ThermalPolicy.setting(for: ProcessInfo.processInfo.thermalState)
+        sessionQueue.async {
+            guard setting.label != self.thermalLabel else { return }
+            self.thermalLabel = setting.label
+            self.thermalTransitions += 1
+            self.targetFPS = setting.targetFPS      // didSet 同步更新 captureInterval
+            self.currentQuality = setting.jpegQuality
+            print("[thermal] -> \(setting.label) \(setting.targetFPS)fps q\(setting.jpegQuality)")
+            DispatchQueue.main.async { self.sendHeartbeat(reason: "thermal") }
+        }
+    }
+
+    private func sendHeartbeat(reason: String) {
+        guard let base = UploadSettings.shared.baseURL else { return }
+        let payload: [String: Any] = [
+            "device_id": deviceID,
+            "meta": [
+                "thermal": ThermalPolicy.name(for: ProcessInfo.processInfo.thermalState),
+                "thermal_label": thermalLabel,
+                "target_fps": targetFPS,
+                "jpeg_quality": currentQuality,
+                "reason": reason,
+                "uptime_s": Int(Date().timeIntervalSince1970 - startedEpoch),
+            ],
+        ]
+        uploader.sendHeartbeat(base: base, payload: payload)
     }
 
     private func setStatus(_ text: String) {
@@ -454,6 +506,7 @@ extension ARSessionManager: ARSessionDelegate {
             producedBundles += 1
             let depthForPack = depthCopy
             let confidenceForPack = confidenceCopy
+            let packQuality = currentQuality
             let enqueuedAt = CACurrentMediaTime()
             encoderQueue.async { [weak self] in
                 guard let self else { return }
@@ -462,7 +515,8 @@ extension ARSessionManager: ARSessionDelegate {
                 let output = FramePackager.build(frame: frame,
                                                  snapshot: frameSnapshot,
                                                  depth: depthForPack,
-                                                 confidence: confidenceForPack)
+                                                 confidence: confidenceForPack,
+                                                 quality: CGFloat(packQuality))
                 self.packBuildMs = (CACurrentMediaTime() - startedAt) * 1000
                 if let bundle = output.bundle {
                     self.bundleStore.save(bundle)
@@ -517,6 +571,9 @@ extension ARSessionManager: ARSessionDelegate {
             depthBytes: depthBytes,
             confidenceBytes: confidenceBytes,
             thermalState: Self.describe(ProcessInfo.processInfo.thermalState),
+            thermalLabel: thermalLabel,
+            thermalTransitions: thermalTransitions,
+            effectiveQuality: currentQuality,
             lowPowerMode: ProcessInfo.processInfo.isLowPowerModeEnabled,
             residentMB: memory.residentMB,
             peakResidentMB: memory.peakResidentMB,

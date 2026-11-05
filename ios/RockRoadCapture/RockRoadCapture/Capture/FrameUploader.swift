@@ -98,6 +98,18 @@ final class FrameUploader: ObservableObject {
         }
     }
 
+    /// 设备心跳：把热状态与降级后的采集参数告诉后端，
+    /// 让下游知道"这段时间的数据是降频采集的"，而不是当成正常数据。
+    func sendHeartbeat(base: URL, payload: [String: Any]) {
+        guard let url = URL(string: "api/v1/devices/heartbeat", relativeTo: base) else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 3
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: payload)
+        session.dataTask(with: request).resume()
+    }
+
     func recordQualityDrop() {
         stateQueue.async {
             self.counters.droppedQuality += 1

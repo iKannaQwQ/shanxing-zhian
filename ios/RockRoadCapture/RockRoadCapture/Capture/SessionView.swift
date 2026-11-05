@@ -191,6 +191,11 @@ struct SessionView: View {
                                       manager.captureStats.memorySampleCount))
                 FactRow(label: "运行时长",
                         value: String(format: "%.0f s", manager.captureStats.elapsedSeconds))
+                FactRow(label: "热策略",
+                        value: "\(manager.captureStats.thermalLabel) · "
+                            + "\(manager.captureStats.targetFPS)fps · q"
+                            + String(format: "%.2f", manager.captureStats.effectiveQuality)
+                            + " · 降级 \(manager.captureStats.thermalTransitions) 次")
                 FactRow(label: "热状态",
                         value: manager.captureStats.thermalState
                             + (manager.captureStats.lowPowerMode ? " · 低电量模式" : ""))

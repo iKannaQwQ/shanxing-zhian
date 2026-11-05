@@ -65,6 +65,7 @@ def create_app(settings: Settings | None = None,
         app.state.settings = settings
         app.state.started_at = time.time()
         app.state.client_gaps = {}
+        app.state.device_thermal = {}
 
         cleanup = asyncio.create_task(_cleanup_loop(db, settings), name="retention")
         print(f"[backend] 就绪 db={settings.db_path} 队列={settings.queue_capacity} "
@@ -141,7 +142,23 @@ def create_app(settings: Settings | None = None,
             return JSONResponse(status_code=422,
                                 content={"ok": False, "error": "missing device_id"})
         if ready():
-            app.state.db.upsert_device(device_id, now_ns(), payload.get("meta"))
+            meta = payload.get("meta") or {}
+            app.state.db.upsert_device(device_id, now_ns(), meta)
+
+            # 热状态变化写入事件流：让下游知道这段数据是降频采集的
+            thermal = meta.get("thermal")
+            if thermal:
+                previous = app.state.device_thermal.get(device_id)
+                if thermal != previous:
+                    app.state.device_thermal[device_id] = thermal
+                    degraded = thermal in ("过热", "严重过热")
+                    app.state.db.insert_event(
+                        now_ns(), None, device_id,
+                        "WARNING" if degraded else "INFO",
+                        "DEVICE_THERMAL_DEGRADED" if degraded else "DEVICE_THERMAL_RECOVERED",
+                        f"热状态 {previous or '-'} -> {thermal}，"
+                        f"目标 {meta.get('target_fps', '?')}fps，"
+                        f"JPEG 质量 {meta.get('jpeg_quality', '?')}")
         return {"ok": True, "device_id": device_id, "server_ns": now_ns()}
 
     # ---------- 上传 ----------

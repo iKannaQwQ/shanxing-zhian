@@ -22,6 +22,9 @@ struct CaptureStats: Equatable {
     var confidenceBytes: Int = 0
 
     var thermalState: String = "-"
+    var thermalLabel: String = "正常"
+    var thermalTransitions: Int = 0
+    var effectiveQuality: Double = 0.72
     var lowPowerMode: Bool = false
 
     var residentMB: Double = 0
