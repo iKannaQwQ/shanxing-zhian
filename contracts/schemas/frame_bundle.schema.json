@@ -81,7 +81,11 @@
       "properties": {
         "width": { "type": "integer", "minimum": 1 },
         "height": { "type": "integer", "minimum": 1 },
-        "encoding": { "const": "uint8" }
+        "encoding": { "const": "uint8" },
+        "semantics": {
+          "const": "ar_confidence_level",
+          "description": "取值 0=低 1=中 2=高（ARKit ARConfidenceLevel）。禁止按 0-255 归一。"
+        }
       }
     },
     "pose": {

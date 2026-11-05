@@ -105,6 +105,15 @@ def sample_confidence(conf: np.ndarray | None, depth: DepthMap, x: int, y: int,
     patch = c[y0:y1, x0:x1].astype(np.float32)
     if patch.size == 0:
         return None
-    # 不同实现可能给 0-255 或 0-1，统一归一到 0-1
-    scale = 255.0 if patch.max() > 1.0 else 1.0
+
+    # ARKit 的 confidenceMap 是 ARConfidenceLevel：0=低 1=中 2=高。
+    # 实测（iPhone 12 Pro Max / iOS 27.0.1）：OneComponent8，取值 0/1/2。
+    # 若按 0-255 归一，全"高"的窗口会算成 2/255≈0.008，被误判为置信度不足。
+    peak = float(patch.max())
+    if peak <= 2.0:
+        scale = 2.0
+    elif peak <= 255.0:
+        scale = 255.0
+    else:
+        return None
     return float(patch.mean() / scale)

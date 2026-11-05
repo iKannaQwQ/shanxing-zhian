@@ -138,3 +138,22 @@ def test_depth_quality_reasons():
     assert ok is True and reasons == []
     ok2, r2 = depth_quality(None, None)
     assert ok2 is False and "NO_DEPTH_DATA" in r2
+
+
+def test_confidence_arkit_levels_accepted():
+    """ARKit 置信度是 0/1/2 三档，高置信度必须能通过门槛。"""
+    d = _depth(0.8)
+    high = np.full(DEPTH_SHAPE, 2, dtype=np.uint8)
+    est = estimate_rock_depth(BBox(200, 350, 330, 430), RGB_SHAPE, d, _intr(), high)
+    assert est.source is DepthSource.LIDAR
+
+    medium = np.full(DEPTH_SHAPE, 1, dtype=np.uint8)
+    est2 = estimate_rock_depth(BBox(200, 350, 330, 430), RGB_SHAPE, d, _intr(), medium)
+    assert est2.source is DepthSource.LIDAR
+
+
+def test_confidence_low_level_rejected():
+    d = _depth(0.8)
+    low = np.zeros(DEPTH_SHAPE, dtype=np.uint8)
+    est = estimate_rock_depth(BBox(200, 350, 330, 430), RGB_SHAPE, d, _intr(), low)
+    assert est.source is DepthSource.NONE
