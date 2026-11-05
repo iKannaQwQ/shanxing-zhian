@@ -1,50 +1,82 @@
 # 山区公路落石检测、通行风险评估与预警系统
 
-> 沙盘模拟 + iPhone 12 Pro (LiDAR) 采集 + 跨平台 (macOS ARM64 开发 / Windows x86-64 部署)。
+> 80×60 cm 桌面沙盘 + iPhone（LiDAR）俯视采集 + macOS 开发 / Windows 部署（待验证）。
 > **系统输出为实验性辅助评估，不构成任何真实道路驾驶指令。**
+
+---
+
+## 怎么跑
+
+```bash
+bash scripts/start_all.sh     # 一键启动（后端 + AI worker）
+bash scripts/status.sh        # 看当前状态
+bash scripts/stop_all.sh      # 一键停止
+```
+
+完整步骤（手机端、排障、数据清理）：**[运行手册](docs/13-runbook.md)**
+
+---
 
 ## 当前状态
 
-| 阶段 | 内容 | 状态 |
+| 模块 | 状态 | 说明 |
 |---|---|---|
-| P0 | 工程骨架、契约 schema、契约校验器、环境自检 | ✅ 完成 |
-| P1a | C++ 风险评估引擎 | ✅ 完成，46 项测试（见 [风险引擎](docs/04-risk-engine.md)） |
-| P1b | iOS ARKit 采集端 | 🟡 M1 已验证；M2-a 已真机确认；M2-b 已真机校验；M1–M6 已验证；前端已接入；M7 热自适应已实现待长测（见 [iOS 采集端](docs/05-ios-capture.md)） |
-| P2 | 后端最小闭环 | ⬜ 未开始 |
-| P3 | 感知-深度几何 | ⬜ 未开始 |
-| P4 | 沙盘训练管线 | ✅ 完成，合成数据冒烟通过（见 [沙盘管线](docs/09-sandbox-pipeline.md)） |
-| P4 | 感知模块 M1–M7 | 🟡 代码完成、49 项测试通过，**模型未在沙盘验证**（见 [感知模块](docs/03-perception.md)） |
-| P5 | 融合 + 全链路 | ⬜ 未开始 |
-| P6 | 后端（FastAPI+SQLite+WS） | ✅ 完成，14 项测试；推理已解耦（见 [后端 API](docs/10-backend-api.md)） |
-| P7 | 前端（M1–M6 全部页面） | ✅ 六个页面完成，M9 待真机确认（见 [验收清单](docs/11-m9-checklist.md)） |
-| P8 | Windows 部署与实机验证 | ⬜ 未开始 |
+| 契约与校验 | ✅ | 5 个 JSON Schema + 语义不变量，12/12 通过 |
+| C++ 风险引擎 | ✅ | 46 项测试；fail-closed 判定规则 |
+| iOS 采集端 | ✅ | M1–M7；真机 1086 帧零丢失；热自适应降级；朝向自动转正 |
+| Python 感知 | 🟡 | 71 项测试通过；**道路分割在俯视场景不适用，需微调** |
+| FastAPI 后端 | ✅ | 14 项测试；推理与后端解耦；文件存储 + SQLite + WebSocket |
+| Vue 前端 | ✅ | 用户端 + 管理后台 5 页；M9 真机待验 |
+| 沙盘训练管线 | ✅ | 合成数据冒烟通过（IoU 0.96），真实数据未到 |
+| 落石检测器 | ❌ | 无可用权重 → 系统输出 `UNKNOWN` |
+| Windows 部署 | ❌ | 脚本已写，**从未在 Windows 上执行** |
 
-详细设计与阶段出口准则见 [docs/00-architecture.md](docs/00-architecture.md)。
+测试总览：Python 85 项 · C++ 46 项 · 契约 12/12。
 
-## 快速开始（macOS）
+---
 
-```bash
-bash scripts/bootstrap_mac.sh      # 工程内自包含安装 Node / cmake / Python3.11 工具环境
-source scripts/env.sh              # 激活 PATH
-python scripts/check_env.py        # 环境自检
-python contracts/validate.py --all # 契约 + 安全不变量校验
+## 架构
+
+```
+iPhone (ARKit RGB-D)  --HTTP multipart-->  后端 (FastAPI)
+                                              │  落盘 + 入队
+                                              ▼
+                                        frames(status=stored)
+                                              │  轮询
+                                              ▼
+                                        AI worker（模型在这）
+                                              │  POST 感知结果
+                                              ▼
+                                        风险引擎 (C++) → SQLite
+                                              │
+                                        WebSocket 推送
+                                              ▼
+                                          浏览器
 ```
 
-工具链全部落在 `.tools/`（已 gitignore），不写 `~/.local`、不需要 sudo。
+**三条硬性边界**（有测试守护）：
+
+1. 后端不加载任何模型（`import perception` 被测试禁止）
+2. 网页请求只读库，永不触发推理
+3. 大数组走文件，不进 JSON
+
+---
 
 ## 目录
 
 ```
 contracts/     JSON Schema + 样例 + 校验器（跨语言唯一真源）
-docs/          架构、协议、风险模型、标定、Windows 部署
-ios/           Swift + SwiftUI + ARKit 采集端（未实现）
-perception/    Python 感知（未实现）
-risk_engine/   C++17 风险评估引擎（未实现）
-backend/       FastAPI + SQLite（未实现）
-frontend/      Vue 3 + TS + Element Plus（未实现）
-scripts/       环境引导、启动、自检
+docs/          架构、协议、风险模型、后端 API、运行手册
+ios/           Swift + SwiftUI + ARKit 采集端
+perception/    Python 感知库 + 训练工具
+risk_engine/   C++17 风险评估引擎
+backend/       FastAPI + SQLite + WebSocket
+frontend/      Vue 3 + TS + Element Plus
+scripts/       启停、自检、标定、数据准备
 data/          运行时产物（gitignore）
 ```
+
+---
 
 ## 安全边界（写进校验器，可被 CI 拦截）
 
@@ -58,11 +90,33 @@ data/          运行时产物（gitignore）
 
 对应规则编号见 `contracts/validate.py` 中的 `P*` / `R*` / `C*`。
 
+---
+
 ## 已知限制
 
-- 尚未采集任何真实沙盘数据；`contracts/samples/` 中标 `source: SIMULATED` 的均为**构造样例**，不是模型输出。
-- Windows 启动脚本与会话尚未编写（属 P8，需在 Windows 实机验证后才可宣称可用）。
-- iOS 模拟器无运行时，且 ARKit/LiDAR 本就不支持模拟器 → 采集端必须真机调试。
-- YOLOP 原版只检测"车辆"一类，**不含落石**；落石检测器为独立模型，用公开数据集训练，未在沙盘验证。
-- 尚无沙盘数据，感知侧所有落石结论仅为工程链路验证。
-- iOS 采集端只完成 M1（能力检查，已真机验证）；RGB/深度采集与上传尚未实现。
+1. **没有落石检测器** → 系统恒为 `DEGRADED`，结论恒为 `UNKNOWN`。这是设计，不是 bug。
+2. **YOLOP 在俯视机位结构性不适用**（训练自前视行车视角），沙盘需自训练 U-Net，
+   见 [拍摄几何](docs/12-camera-geometry.md)。
+3. **深度值的米制精度未标定**（只验证了几何对齐，见 [感知](docs/03-perception.md)）。
+4. **风险引擎阈值是占位值**（`vehicle_width_m` 等），需沙盘实测后替换。
+5. **Windows 部署未验证**；`build_risk_engine.ps1` 与 PowerShell 步骤均未实机执行。
+6. **前端未做真机/多浏览器确认**，清单见 [M9 验收](docs/11-m9-checklist.md)。
+7. `contracts/samples/` 中标 `source: SIMULATED` 的均为**构造样例**，不是模型输出。
+
+---
+
+## 文档
+
+| 文档 | 内容 |
+|---|---|
+| [运行手册](docs/13-runbook.md) | 傻瓜版启动 / 停止 / 排障 |
+| [架构](docs/00-architecture.md) | 分层、依赖 DAG、阶段出口 |
+| [协议](docs/01-protocol.md) | multipart 布局、时间/深度约定 |
+| [感知](docs/03-perception.md) | 道路分割、深度融合、侵入判定 |
+| [风险引擎](docs/04-risk-engine.md) | 判定规则、门控表、局限性 |
+| [iOS 采集](docs/05-ios-capture.md) | 真机验证、热降级、朝向 |
+| [后端 API](docs/10-backend-api.md) | 接口、WebSocket 协议、数据库 |
+| [拍摄几何](docs/12-camera-geometry.md) | 俯视机位、视场计算、安装高度 |
+| [沙盘管线](docs/09-sandbox-pipeline.md) | 数据约定、训练、评估、切换模型 |
+| [前端](docs/08-frontend.md) | 页面结构、枚举、构建 |
+| [M9 验收](docs/11-m9-checklist.md) | 跨端逐项检查清单 |
