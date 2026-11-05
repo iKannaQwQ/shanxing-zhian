@@ -1,5 +1,0 @@
-path: /Users/akiyamakanna/Documents/dev/mountain/data/public/mb-boulder/yolo
-train: images/train
-val: images/val
-nc: 1
-names: ['boulder']
