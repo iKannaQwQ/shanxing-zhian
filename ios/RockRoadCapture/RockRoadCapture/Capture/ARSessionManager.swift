@@ -537,7 +537,11 @@ extension ARSessionManager: ARSessionDelegate {
                     self.previewQueue.async { [weak self] in
                         let thumb = ImageDownscale.thumbnail(image, maxWidth: 640)
                         DispatchQueue.main.async {
-                            self?.rgbPreview = thumb.map { UIImage(cgImage: $0) }
+                            // capturedImage 原生是 landscape-right，
+                            // 预览不加方向标记就会相对 ARKit 预览横躺 90°。
+                            self?.rgbPreview = thumb.map {
+                                UIImage(cgImage: $0, scale: 1, orientation: .right)
+                            }
                             self?.encoderStats = output.stats
                         }
                     }
