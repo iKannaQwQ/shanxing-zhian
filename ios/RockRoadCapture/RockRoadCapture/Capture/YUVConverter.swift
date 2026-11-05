@@ -22,7 +22,12 @@ enum YUVConverter {
         var error: String?
     }
 
-    static func makeBGRAImage(_ pixelBuffer: CVPixelBuffer) -> Result {
+    /// - Parameters:
+    ///   - targetWidth/targetHeight: 传 0 表示保持原始分辨率；
+    ///     否则在 vImage 内缩放后再生成 CGImage（省掉一次全尺寸缓冲的持有）。
+    static func makeBGRAImage(_ pixelBuffer: CVPixelBuffer,
+                              targetWidth: Int = 0,
+                              targetHeight: Int = 0) -> Result {
         let start = CFAbsoluteTimeGetCurrent()
         let format = CVPixelBufferGetPixelFormatType(pixelBuffer)
 
@@ -101,8 +106,39 @@ enum YUVConverter {
             return Result(image: nil, milliseconds: 0, error: "YUV 转 BGRA 失败: \(convertStatus)")
         }
 
-        let data = Data(bytesNoCopy: destinationData,
-                        count: destinationStride * height,
+        // 需要更小的输出时直接在 vImage 里缩放，避免再走一次 CGContext 重绘。
+        var finalData = destinationData
+        var finalStride = destinationStride
+        var finalWidth = width
+        var finalHeight = height
+
+        if targetWidth > 0, targetHeight > 0,
+           targetWidth != width || targetHeight != height {
+            var scaled = vImage_Buffer()
+            guard vImageBuffer_Init(&scaled,
+                                    vImagePixelCount(targetHeight),
+                                    vImagePixelCount(targetWidth),
+                                    32,
+                                    vImage_Flags(kvImageNoFlags)) == kvImageNoError else {
+                free(destinationData)
+                return Result(image: nil, milliseconds: 0, error: "分配缩放缓冲失败")
+            }
+            let scaleStatus = vImageScale_ARGB8888(
+                &destination, &scaled, nil,
+                vImage_Flags(kvImageHighQualityResampling))
+            free(destinationData)
+            guard scaleStatus == kvImageNoError else {
+                free(scaled.data)
+                return Result(image: nil, milliseconds: 0, error: "缩放失败: \(scaleStatus)")
+            }
+            finalData = scaled.data
+            finalStride = scaled.rowBytes
+            finalWidth = targetWidth
+            finalHeight = targetHeight
+        }
+
+        let data = Data(bytesNoCopy: finalData,
+                        count: finalStride * finalHeight,
                         deallocator: .free)
         guard let provider = CGDataProvider(data: data as CFData) else {
             return Result(image: nil, milliseconds: 0, error: "创建 CGDataProvider 失败")
@@ -112,11 +148,11 @@ enum YUVConverter {
             rawValue: CGImageAlphaInfo.noneSkipFirst.rawValue
                 | CGBitmapInfo.byteOrder32Little.rawValue)
         guard let image = CGImage(
-            width: width,
-            height: height,
+            width: finalWidth,
+            height: finalHeight,
             bitsPerComponent: 8,
             bitsPerPixel: 32,
-            bytesPerRow: destinationStride,
+            bytesPerRow: finalStride,
             space: CGColorSpaceCreateDeviceRGB(),
             bitmapInfo: bitmapInfo,
             provider: provider,

@@ -28,3 +28,17 @@ struct CaptureStats: Equatable {
     var trendMB: Double = 0
     var memorySampleCount: Int = 0
 }
+
+/// M4 打包统计。
+struct BundleStats: Equatable {
+    var produced = 0
+    var saved = 0
+    var saveLimit = 20
+    var jpegBytes = 0
+    var depthBytes = 0
+    var confidenceBytes = 0
+    var metadataBytes = 0
+    var totalBytes = 0
+    var directory = "-"
+    var error: String?
+}

@@ -98,7 +98,7 @@
           "minItems": 16, "maxItems": 16,
           "description": "列主序 4x4 相机->世界 变换(ARKit camera.transform 语义)。"
         },
-        "tracking_state": { "enum": ["normal", "limited_initializing", "limited_excessive_motion", "limited_insufficient_features", "not_available"] }
+        "tracking_state": { "enum": ["normal", "limited_initializing", "limited_excessive_motion", "limited_insufficient_features", "limited_relocalizing", "not_available"] }
       }
     },
     "delivery": {

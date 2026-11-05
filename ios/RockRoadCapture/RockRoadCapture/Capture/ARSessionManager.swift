@@ -28,7 +28,13 @@ final class ARSessionManager: NSObject, ObservableObject {
     @Published private(set) var depthPreview: UIImage?
     @Published private(set) var confidencePreview: UIImage?
 
+    /// M4：打包统计。
+    @Published private(set) var bundleStats = BundleStats()
+
     let session = ARSession()
+
+    /// 供界面导出打包结果。
+    var bundleRootURL: URL { bundleStore.rootURL }
 
     /// 只有支持 sceneDepth 的设备才允许开始采集（M1 已确认本项目设备支持）。
     let isDepthSupported = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
@@ -72,10 +78,16 @@ final class ARSessionManager: NSObject, ObservableObject {
     private var depthBytes = 0
     private var confidenceBytes = 0
 
-    /// RGB 转码/编码只服务于**预览与成本测量**，不需要跟采集同频。
-    /// 与采集率解耦：10 fps 采集 + 2 fps 预览。
-    private let previewInterval: TimeInterval = 0.5
-    private var lastEncodeStart: TimeInterval = 0
+    // M4 打包
+    private var sessionID = UUID().uuidString
+    private var sessionEpochNs: Int64 = 0
+    private var sequence = 0
+    private var producedBundles = 0
+    private let bundleStore = BundleStore(saveLimit: 20)
+    private let deviceID: String = {
+        let vendor = UIDevice.current.identifierForVendor?.uuidString.prefix(8) ?? "unknown"
+        return "iphone13,3-\(vendor)"
+    }()
 
     private var startedAt: TimeInterval = 0
     private var lastPublish: TimeInterval = 0
@@ -122,7 +134,11 @@ final class ARSessionManager: NSObject, ObservableObject {
         confidenceBytes = 0
         lastPublish = 0
         lastStatusPublish = 0
-        lastEncodeStart = 0
+        sessionID = UUID().uuidString
+        sessionEpochNs = Int64(Date().timeIntervalSince1970 * 1_000_000_000)
+        sequence = 0
+        producedBundles = 0
+        bundleStore.reset()
         startedAt = CACurrentMediaTime()
         MemoryProbe.resetPeak()
 
@@ -195,11 +211,61 @@ final class ARSessionManager: NSObject, ObservableObject {
         lines.append("内存采样点: \(c.memorySampleCount)（每 5 s 一个）   运行 \(String(format: "%.0f", c.elapsedSeconds)) s")
         lines.append("热状态: \(c.thermalState)   低电量模式: \(c.lowPowerMode ? "开" : "关")")
         if let err = encoderStats.error { lines.append("编码错误: \(err)") }
+        let b = bundleStats
+        lines.append("--- M4 打包 ---")
+        lines.append("已打包: \(b.produced)   已保存: \(b.saved)/\(b.saveLimit)   最近: \(b.directory)")
+        lines.append("metadata \(b.metadataBytes) B   rgb \(b.jpegBytes) B   "
+                     + "depth \(b.depthBytes) B   conf \(b.confidenceBytes) B   合计 \(b.totalBytes) B")
+        if let err = b.error { lines.append("打包错误: \(err)") }
         if let err = lastError { lines.append("错误: \(err)") }
         return lines.joined(separator: "\n")
     }
 
     // MARK: - 内部
+
+    /// 组装跨队列传递的帧快照；内参在这里就换算到输出分辨率。
+    private func makeSnapshot(frame: ARFrame) -> FrameSnapshot {
+        let resolution = frame.camera.imageResolution
+        let intrinsics = FrameIntrinsics.scaled(
+            from: frame.camera.intrinsics,
+            sourceWidth: Int(resolution.width.rounded()),
+            sourceHeight: Int(resolution.height.rounded()),
+            targetWidth: FramePackager.outputWidth,
+            targetHeight: FramePackager.outputHeight)
+
+        return FrameSnapshot(frameID: UUID().uuidString,
+                             sequence: sequence,
+                             sessionID: sessionID,
+                             deviceID: deviceID,
+                             tsCaptureNs: sessionEpochNs + Int64(frame.timestamp * 1_000_000_000),
+                             intrinsics: intrinsics,
+                             pose: Self.matrixArray(frame.camera.transform),
+                             trackingState: Self.trackingStateName(frame.camera.trackingState))
+    }
+
+    /// simd_float4x4 是列主序，契约要求 16 个数的列主序数组。
+    private static func matrixArray(_ matrix: simd_float4x4) -> [Double] {
+        let c = matrix.columns
+        return [c.0.x, c.0.y, c.0.z, c.0.w,
+                c.1.x, c.1.y, c.1.z, c.1.w,
+                c.2.x, c.2.y, c.2.z, c.2.w,
+                c.3.x, c.3.y, c.3.z, c.3.w].map { Double($0) }
+    }
+
+    private static func trackingStateName(_ state: ARCamera.TrackingState) -> String {
+        switch state {
+        case .normal: return "normal"
+        case .notAvailable: return "not_available"
+        case .limited(let reason):
+            switch reason {
+            case .initializing: return "limited_initializing"
+            case .excessiveMotion: return "limited_excessive_motion"
+            case .insufficientFeatures: return "limited_insufficient_features"
+            case .relocalizing: return "limited_relocalizing"
+            @unknown default: return "limited_insufficient_features"
+            }
+        }
+    }
 
     private func setStatus(_ text: String) {
         DispatchQueue.main.async { self.statusText = text }
@@ -300,26 +366,37 @@ extension ARSessionManager: ARSessionDelegate {
                                             pixelFormat: depthCopy.pixelFormat)
         }
 
-        // --- RGB 编码（独立队列；按预览频率节流，不跟采集同频）---
-        let previewDue = frame.timestamp - lastEncodeStart >= previewInterval
-        if previewDue {
-            if beginEncodeIfIdle() {
-                lastEncodeStart = frame.timestamp
-                encoderQueue.async { [weak self] in
-                    let output = FrameEncoder.encode(frame.capturedImage)
-                    // 只保留缩略图：整幅 1920x1440 BGRA 是 11 MB。
-                    let thumbnail = output.image?
+        // --- M4：每一采集帧都打包（10 fps 的真实通路）---
+        sequence += 1
+        let frameSnapshot = makeSnapshot(frame: frame)
+
+        if beginEncodeIfIdle() {
+            producedBundles += 1
+            let depthForPack = depthCopy
+            let confidenceForPack = confidenceCopy
+            encoderQueue.async { [weak self] in
+                guard let self else { return }
+                let output = FramePackager.build(frame: frame,
+                                                 snapshot: frameSnapshot,
+                                                 depth: depthForPack,
+                                                 confidence: confidenceForPack)
+                if let bundle = output.bundle {
+                    self.bundleStore.save(bundle)
+                }
+                // 预览每 5 帧刷新一次（2 Hz），避免 SwiftUI 过度重绘。
+                if frameSnapshot.sequence % 5 == 0, let image = output.image {
+                    let thumbnail = UIImage(cgImage: image)
                         .preparingThumbnail(of: CGSize(width: 640, height: 480))
                     DispatchQueue.main.async {
-                        self?.rgbPreview = thumbnail ?? output.image
-                        self?.encoderStats = output.stats
+                        self.rgbPreview = thumbnail
+                        self.encoderStats = output.stats
                     }
-                    self?.endEncode()
                 }
-            } else {
-                // 只有"该预览却排不上队"才算丢帧
-                droppedEncoderBusy += 1
+                self.endEncode()
             }
+        } else {
+            // 打包队列排不上队 = 该帧被丢弃
+            droppedEncoderBusy += 1
         }
 
         // --- 周期性发布快照 ---
@@ -356,9 +433,22 @@ extension ARSessionManager: ARSessionDelegate {
             trendMB: memory.trendMB,
             memorySampleCount: memory.sampleCount)
 
+        let store = bundleStore.snapshot()
+        let bundles = BundleStats(produced: producedBundles,
+                                  saved: store.saved,
+                                  saveLimit: store.saveLimit,
+                                  jpegBytes: store.lastJpegBytes,
+                                  depthBytes: store.lastDepthBytes,
+                                  confidenceBytes: store.lastConfidenceBytes,
+                                  metadataBytes: store.lastMetadataBytes,
+                                  totalBytes: store.lastTotalBytes,
+                                  directory: store.lastDirectory,
+                                  error: store.error)
+
         DispatchQueue.main.async {
             self.facts = snapshot
             self.captureStats = stats
+            self.bundleStats = bundles
             self.depthPreview = depthImage
             self.confidencePreview = confidenceImage
             self.statusText = "采集中"

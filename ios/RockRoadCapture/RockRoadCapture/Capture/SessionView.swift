@@ -200,6 +200,29 @@ struct SessionView: View {
                     .font(.caption2)
             }
 
+            Section {
+                FactRow(label: "已打包", value: "\(manager.bundleStats.produced)")
+                FactRow(label: "已保存",
+                        value: "\(manager.bundleStats.saved) / \(manager.bundleStats.saveLimit)")
+                FactRow(label: "metadata.json", value: "\(manager.bundleStats.metadataBytes) B")
+                FactRow(label: "rgb.jpg", value: "\(manager.bundleStats.jpegBytes) B")
+                FactRow(label: "depth.bin", value: "\(manager.bundleStats.depthBytes) B")
+                FactRow(label: "confidence.bin", value: "\(manager.bundleStats.confidenceBytes) B")
+                FactRow(label: "单帧合计", value: "\(manager.bundleStats.totalBytes) B")
+                FactRow(label: "最近目录", value: manager.bundleStats.directory)
+                if let error = manager.bundleStats.error {
+                    FactRow(label: "错误", value: error)
+                }
+                ShareLink(item: manager.bundleRootURL) {
+                    Label("导出 FrameBundles 目录", systemImage: "square.and.arrow.up")
+                }
+            } header: {
+                Text("M4 打包（1280×960）")
+            } footer: {
+                Text("每帧四个文件：metadata.json / rgb.jpg / depth.bin / confidence.bin。只落盘前 20 帧用于校验；也可在「文件」App → 我的 iPhone → RockRoadCapture 中找到。")
+                    .font(.caption2)
+            }
+
             Section("RGB · capturedImage") {
                 FactRow(label: "分辨率", value: "\(facts.rgbWidth) × \(facts.rgbHeight)")
                 FactRow(label: "像素格式", value: facts.rgbFormat)

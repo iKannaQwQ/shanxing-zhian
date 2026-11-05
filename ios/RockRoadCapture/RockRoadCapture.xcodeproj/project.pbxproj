@@ -24,6 +24,9 @@
 		AA00000000000000000000CF /* CaptureStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000BD /* CaptureStats.swift */; };
 		AA00000000000000000000D4 /* RawPlane.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000D5 /* RawPlane.swift */; };
 		AA00000000000000000000D6 /* Visualizers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000D7 /* Visualizers.swift */; };
+		AA00000000000000000000EA /* FrameBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000E7 /* FrameBundle.swift */; };
+		AA00000000000000000000EB /* FramePackager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000E8 /* FramePackager.swift */; };
+		AA00000000000000000000EC /* BundleStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000E9 /* BundleStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -45,6 +48,9 @@
 		AA00000000000000000000BD /* CaptureStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureStats.swift; sourceTree = "<group>"; };
 		AA00000000000000000000D5 /* RawPlane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RawPlane.swift; sourceTree = "<group>"; };
 		AA00000000000000000000D7 /* Visualizers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Visualizers.swift; sourceTree = "<group>"; };
+		AA00000000000000000000E7 /* FrameBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameBundle.swift; sourceTree = "<group>"; };
+		AA00000000000000000000E8 /* FramePackager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FramePackager.swift; sourceTree = "<group>"; };
+		AA00000000000000000000E9 /* BundleStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundleStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -110,6 +116,9 @@
 				AA00000000000000000000BD /* CaptureStats.swift */,
 				AA00000000000000000000D5 /* RawPlane.swift */,
 				AA00000000000000000000D7 /* Visualizers.swift */,
+				AA00000000000000000000E7 /* FrameBundle.swift */,
+				AA00000000000000000000E8 /* FramePackager.swift */,
+				AA00000000000000000000E9 /* BundleStore.swift */,
 			);
 			path = Capture;
 			sourceTree = "<group>";
@@ -199,6 +208,9 @@
 				AA00000000000000000000CF /* CaptureStats.swift in Sources */,
 				AA00000000000000000000D4 /* RawPlane.swift in Sources */,
 				AA00000000000000000000D6 /* Visualizers.swift in Sources */,
+				AA00000000000000000000EA /* FrameBundle.swift in Sources */,
+				AA00000000000000000000EB /* FramePackager.swift in Sources */,
+				AA00000000000000000000EC /* BundleStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -327,7 +339,11 @@
 				DEVELOPMENT_TEAM = 7PMKFVTFBC;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "用于采集道路 RGB 图像以进行落石检测；数据仅发送到本地局域网的开发机。";
+				INFOPLIST_KEY_UIFileSharingEnabled = YES;
+				INFOPLIST_KEY_UIFileSharingEnabled = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -356,7 +372,11 @@
 				DEVELOPMENT_TEAM = 7PMKFVTFBC;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "用于采集道路 RGB 图像以进行落石检测；数据仅发送到本地局域网的开发机。";
+				INFOPLIST_KEY_UIFileSharingEnabled = YES;
+				INFOPLIST_KEY_UIFileSharingEnabled = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

@@ -1,0 +1,66 @@
+{
+  "schema_version": "1.0",
+  "msg_type": "frame_bundle",
+  "frame_id": "355de7f1-2de8-45b7-8786-a37b8160ebea",
+  "device_id": "iphone13,3-9F2A1C7B",
+  "session_id": "ecc657a6-aa4a-4373-8a26-b7949cbd7d77",
+  "seq": 1,
+  "ts_capture_ns": 1762350000123456789,
+  "capture": {
+    "width": 1280,
+    "height": 960,
+    "bytes": 178432,
+    "format": "jpeg",
+    "jpeg_quality": 0.72,
+    "orientation": "landscape_right"
+  },
+  "intrinsics": {
+    "fx": 982.166667,
+    "fy": 982.166667,
+    "cx": 645.946667,
+    "cy": 455.466667,
+    "reference_width": 1280,
+    "reference_height": 960
+  },
+  "depth": {
+    "width": 256,
+    "height": 192,
+    "encoding": "float32_m",
+    "scale_factor": 1.0,
+    "invalid_value": 0,
+    "aligned_to_rgb": true,
+    "source": "arkit.sceneDepth"
+  },
+  "confidence": {
+    "width": 256,
+    "height": 192,
+    "encoding": "uint8",
+    "semantics": "ar_confidence_level"
+  },
+  "pose": {
+    "matrix": [
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0.12,
+      0.45,
+      0.3,
+      1
+    ],
+    "tracking_state": "normal"
+  },
+  "delivery": {
+    "queue_depth": 0,
+    "attempt": 1,
+    "dropped_since_last": 0
+  }
+}
