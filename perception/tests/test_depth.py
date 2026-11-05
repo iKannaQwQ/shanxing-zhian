@@ -1,6 +1,9 @@
 """M5 RGB-D 关联合成测试：分辨率差异、对齐可信度、无效深度、量程。"""
 from __future__ import annotations
 
+import pytest
+from pathlib import Path
+
 import numpy as np
 
 from perception.depth.align import (check_alignment, rgb_to_depth_px, sample_patch)
@@ -157,3 +160,59 @@ def test_confidence_low_level_rejected():
     low = np.zeros(DEPTH_SHAPE, dtype=np.uint8)
     est = estimate_rock_depth(BBox(200, 350, 330, 430), RGB_SHAPE, d, _intr(), low)
     assert est.source is DepthSource.NONE
+
+
+# ---------- 真机数据回归（fixtures/device_frame_0011）----------
+
+FIXTURE = Path(__file__).resolve().parent / "fixtures" / "device_frame_0011"
+
+
+@pytest.mark.skipif(not FIXTURE.exists(), reason="缺少真机样本")
+def test_real_device_metadata_matches_contract():
+    import json
+    from jsonschema import Draft202012Validator, FormatChecker
+
+    schema_path = Path(__file__).resolve().parents[2] / "contracts" / "schemas" / \
+        "frame_bundle.schema.json"
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    meta = json.loads((FIXTURE / "metadata.json").read_text(encoding="utf-8"))
+    errors = list(Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(meta))
+    assert not errors, [e.message for e in errors]
+    assert meta["intrinsics"]["reference_width"] == meta["capture"]["width"]
+
+
+@pytest.mark.skipif(not FIXTURE.exists(), reason="缺少真机样本")
+def test_real_device_depth_decodes_as_meters():
+    import json
+    meta = json.loads((FIXTURE / "metadata.json").read_text(encoding="utf-8"))
+    d = meta["depth"]
+    raw = np.fromfile(FIXTURE / "depth.bin", dtype=np.float32).reshape(d["height"], d["width"])
+    valid = raw[np.isfinite(raw) & (raw > 0)]
+    assert valid.size > 0
+    # 该帧为近距物体：0.06~0.45 m
+    assert 0.03 < valid.min() < 0.15
+    assert 0.3 < valid.max() < 1.0
+
+
+@pytest.mark.skipif(not FIXTURE.exists(), reason="缺少真机样本")
+def test_real_device_confidence_is_ar_levels():
+    """真机置信度必须是 0/1/2；若出现 0-255 说明采集端改了语义。"""
+    raw = np.fromfile(FIXTURE / "confidence.bin", dtype=np.uint8)
+    unique = set(np.unique(raw).tolist())
+    assert unique.issubset({0, 1, 2}), f"非预期取值: {sorted(unique)[:10]}"
+
+
+@pytest.mark.skipif(not FIXTURE.exists(), reason="缺少真机样本")
+def test_real_device_confidence_tracks_depth_range():
+    """近于 0.2 m 的像素置信度应显著偏低——这是 LiDAR 有效量程的经验证据。"""
+    import json
+    meta = json.loads((FIXTURE / "metadata.json").read_text(encoding="utf-8"))
+    d = meta["depth"]
+    depth = np.fromfile(FIXTURE / "depth.bin", dtype=np.float32).reshape(d["height"], d["width"])
+    conf = np.fromfile(FIXTURE / "confidence.bin", dtype=np.uint8).reshape(d["height"], d["width"])
+
+    near = depth < 0.15
+    far = depth > 0.40
+    assert near.sum() > 100 and far.sum() > 100
+    assert (conf[near] == 0).mean() > 0.9      # 近处几乎全是低置信度
+    assert (conf[far] == 2).mean() > 0.9       # 远处几乎全是高置信度
