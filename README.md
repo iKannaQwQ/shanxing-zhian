@@ -129,5 +129,6 @@ data/          运行时产物（gitignore）
 | [后端 API](docs/10-backend-api.md) | 接口、WebSocket 协议、数据库 |
 | [拍摄几何](docs/12-camera-geometry.md) | 俯视机位、视场计算、安装高度 |
 | [沙盘管线](docs/09-sandbox-pipeline.md) | 数据约定、训练、评估、切换模型 |
+| [AeroScapes Stage 1](docs/15-aeroscapes-stage1.md) | 数据集核实、代码审计、训练方案 |
 | [前端](docs/08-frontend.md) | 页面结构、枚举、构建 |
 | [M9 验收](docs/11-m9-checklist.md) | 跨端逐项检查清单 |
