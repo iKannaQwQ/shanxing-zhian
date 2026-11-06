@@ -7,6 +7,9 @@ data/logs/
 data/models/
 # 采集/标注数据：体积大、随场景变化，不入库
 data/sandbox/
+# 训练数据集：CC BY-SA 4.0，仅本地使用不重新分发
+data/aeroscapes/
+*.tar.gz
 # 第三方公开数据集：用 script 重新获取，不随仓库分发
 data/public/
 
