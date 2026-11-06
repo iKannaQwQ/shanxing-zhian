@@ -125,6 +125,7 @@ data/          运行时产物（gitignore）
 | [感知](docs/03-perception.md) | 道路分割、深度融合、侵入判定 |
 | [风险引擎](docs/04-risk-engine.md) | 判定规则、门控表、局限性 |
 | [iOS 采集](docs/05-ios-capture.md) | 真机验证、热降级、朝向 |
+| [iOS 功能总览](docs/14-ios-capture-features.md) | 采集端能力清单与参数 |
 | [后端 API](docs/10-backend-api.md) | 接口、WebSocket 协议、数据库 |
 | [拍摄几何](docs/12-camera-geometry.md) | 俯视机位、视场计算、安装高度 |
 | [沙盘管线](docs/09-sandbox-pipeline.md) | 数据约定、训练、评估、切换模型 |
