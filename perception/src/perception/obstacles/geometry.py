@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 import cv2
 import numpy as np
 
-from ..types import BBox, RockObservation
+from ..types import BBox, RockObservation  # noqa: F401
 
 #: 平面内点阈值（米）。经验值：约 2.5σ，σ 由实测给出。
 DEFAULT_INLIER_M = 0.005
@@ -51,11 +51,11 @@ class Protrusion:
     def to_observation(self, index: int, label: str = "obstacle:geometric",
                        image_scale: float = 1.0) -> RockObservation:
         x1, y1, x2, y2 = self.bbox
-        scaled = (x1 * image_scale, y1 * image_scale,
-                  x2 * image_scale, y2 * image_scale)
+        scaled = BBox(x1 * image_scale, y1 * image_scale,
+                      x2 * image_scale, y2 * image_scale)
         # 置信度：3σ 起步算 0.5，6σ 及以上算 0.95，中间线性
         score = float(np.clip(0.5 + (self.snr - 3.0) / 3.0 * 0.45, 0.0, 0.95))
-        return RockObservation(rock_id=f"GEO-{index + 1}", bbox=scaled,  # type: ignore[arg-type]
+        return RockObservation(rock_id=f"GEO-{index + 1}", bbox=scaled,
                                score=score, label=label)
 
 

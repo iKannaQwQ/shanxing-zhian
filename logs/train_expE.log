@@ -10,3 +10,18 @@ epoch   8/15  loss 0.4200  RoadIoU 0.4427  mIoU 0.6467  489s
 epoch   9/15  loss 0.3878  RoadIoU 0.6091  mIoU 0.7474  549s  *保存最佳
 epoch  10/15  loss 0.3634  RoadIoU 0.6980  mIoU 0.8097  609s  *保存最佳
 epoch  11/15  loss 0.3423  RoadIoU 0.7325  mIoU 0.8304  828s  *保存最佳
+epoch  12/15  loss 0.3331  RoadIoU 0.7479  mIoU 0.8386  534s  *保存最佳
+epoch  13/15  loss 0.3160  RoadIoU 0.7010  mIoU 0.8099  471s
+epoch  14/15  loss 0.3090  RoadIoU 0.7403  mIoU 0.8340  467s
+epoch  15/15  loss 0.3054  RoadIoU 0.7541  mIoU 0.8423  529s  *保存最佳
+
+== 独立 Test 集 ==
+  road_iou         0.7411
+  background_iou   0.9286
+  mean_iou         0.8349
+  dice             0.8513
+  precision        0.8176
+  recall           0.8879
+  pixel_accuracy   0.9407
+
+最佳验证 Road IoU 0.7541  权重 perception/weights/aeroscapes_unet_512_bs8_expE.pt

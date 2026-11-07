@@ -22,7 +22,7 @@ from .geometry.intrusion import (IntrusionPolicy, assess_intrusion,
 from .report import build_report, report_to_dict
 from .road.mask_ops import assess_road, clean_mask
 from .status import IntrusionLevel, RoadMaskStatus, SystemStatus
-from .types import Reason, RockObservation
+from .types import BBox, Reason, RockObservation
 
 
 @dataclass
@@ -46,6 +46,10 @@ class PipelineConfig:
     min_road_confidence: float = 0.5
     # 模型平均预测熵上限：超过视为分布外，直接判 LOW_CONFIDENCE
     max_road_uncertainty: float = 0.20
+    # 障碍来源：none | geometric（用深度几何，不需要检测模型）
+    obstacle_mode: str = "none"
+    min_obstacle_height_m: float = 0.008
+    min_obstacle_area_px: int = 12
     max_rocks: int = 50
     min_depth_ratio: float = 0.30
     timeout_ms: float = 2000.0
@@ -60,6 +64,7 @@ class PerceptionPipeline:
                  config: PipelineConfig | None = None):
         self.road_segmenter = road_segmenter
         self.last_road_mask = None
+        self.last_obstacle_geometry = None
         self.rock_detector = rock_detector
         self.cfg = config or PipelineConfig()
 
@@ -178,10 +183,40 @@ class PerceptionPipeline:
             rocks = list(inp.rocks)
         elif self.rock_detector is not None and inp.rgb is not None:
             rocks = self.rock_detector.predict(inp.rgb)
+        elif (self.cfg.obstacle_mode == "geometric" and inp.depth is not None
+              and inp.intrinsics is not None and inp.rgb is not None):
+            rocks = self._geometric_obstacles(inp)
         else:
             rocks = []
         rocks.sort(key=lambda r: r.score, reverse=True)
         return rocks[: self.cfg.max_rocks]
+
+    def _geometric_obstacles(self, inp: FrameInput) -> list[RockObservation]:
+        """用 RGB-D 几何找障碍：不识别类别，只判断"高出地面"。"""
+        from .obstacles.geometry import detect_obstacles
+
+        dh, dw = inp.depth.shape
+        intr = inp.intrinsics.scaled_to(dw, dh)
+        result = detect_obstacles(
+            inp.depth.meters, intr.fx, intr.fy, intr.cx, intr.cy,
+            min_height_m=self.cfg.min_obstacle_height_m,
+            min_area_px=self.cfg.min_obstacle_area_px)
+        self.last_obstacle_geometry = result
+
+        if not result.protrusions:
+            return []
+        # 深度网格 -> RGB 像素（两者同源对齐，缩放比通常相等，但分开算更稳）
+        rh, rw = inp.rgb.shape[:2]
+        sx, sy = rw / float(dw), rh / float(dh)
+        observations: list[RockObservation] = []
+        for index, protrusion in enumerate(result.protrusions):
+            obs = protrusion.to_observation(index)
+            box = obs.bbox
+            observations.append(RockObservation(
+                rock_id=obs.rock_id,
+                bbox=BBox(box.x1 * sx, box.y1 * sy, box.x2 * sx, box.y2 * sy),
+                score=obs.score, label=obs.label, truncated=False))
+        return observations
 
     def _depth_status(self, inp: FrameInput, road) -> tuple[bool, list[str], Any]:
         if inp.rgb is None:

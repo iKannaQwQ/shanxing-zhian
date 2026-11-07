@@ -80,8 +80,8 @@ def test_bbox_scales_to_image_resolution():
     result = detect(make_depth(20))
     scaled = to_observations(result, image_scale=5.0)[0]
     raw = result.protrusions[0].bbox
-    assert scaled.bbox[0] == pytest.approx(raw[0] * 5.0)
-    assert scaled.bbox[2] == pytest.approx(raw[2] * 5.0)
+    assert scaled.bbox.x1 == pytest.approx(raw[0] * 5.0)
+    assert scaled.bbox.x2 == pytest.approx(raw[2] * 5.0)
 
 
 def test_plane_sigma_matches_injected_noise():

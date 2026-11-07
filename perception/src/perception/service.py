@@ -15,7 +15,7 @@ import cv2
 import numpy as np
 
 from .depth.frame import Intrinsics, decode_depth
-from .pipeline import FrameInput, PerceptionPipeline
+from .pipeline import FrameInput, PerceptionPipeline, PipelineConfig
 from .road.orientation import rotation_cw
 
 
@@ -80,9 +80,11 @@ class PerceptionService:
     """加载一次模型，之后可反复调用。串行使用（不是线程安全的）。"""
 
     def __init__(self, device: str = "auto", rock_weights: str | None = None,
-                 simulate_rock: str = "none", road_model: str = "yolop"):
+                 simulate_rock: str = "none", road_model: str = "yolop",
+                 obstacle_mode: str = "none"):
         self.device = device
         self.simulate_rock = simulate_rock
+        self.obstacle_mode = obstacle_mode
 
         if road_model and road_model != "yolop":
             from .road.unet_segmenter import UNetRoadSegmenter
@@ -102,8 +104,9 @@ class PerceptionService:
             print("[perception] 未部署落石检测器，落石类结论将不可用", flush=True)
         self.rock_detector = detector
 
-        self.pipeline = PerceptionPipeline(road_segmenter=self.segmenter,
-                                           rock_detector=detector)
+        self.pipeline = PerceptionPipeline(
+            road_segmenter=self.segmenter, rock_detector=detector,
+            config=PipelineConfig(obstacle_mode=obstacle_mode))
 
     def process_bytes(self, metadata: dict, rgb_bytes: bytes, depth_bytes: bytes,
                       confidence_bytes: bytes | None) -> dict[str, Any]:
@@ -126,6 +129,11 @@ class PerceptionService:
 
         if self.simulate_rock != "none":
             inject_synthetic_rock(report, self.simulate_rock)
+        elif self.rock_detector is None and self.obstacle_mode == "geometric":
+            # 障碍来自深度几何：没有类别信息，但没有这个来源就只能恒 UNKNOWN
+            report["reasons"].append({
+                "code": "OBSTACLE_SOURCE_GEOMETRIC",
+                "message": "障碍由 RGB-D 几何检出，不含类别信息"})
         elif self.rock_detector is None:
             report["system_status"] = "DEGRADED"
             report["reasons"].append({
