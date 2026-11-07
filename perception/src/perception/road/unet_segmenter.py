@@ -23,6 +23,8 @@ class UNetRoadSegmenter:
         self.device = self._resolve(device)
         self.rotation_cw = 0
         self.threshold = threshold
+        #: 最近一帧的平均预测熵（域外/OOD 信号，供上游 fail-closed 闸门使用）
+        self.last_uncertainty: float | None = None
         self.weights = Path(weights)
 
         checkpoint = torch.load(str(weights), map_location=self.device, weights_only=False)
@@ -51,6 +53,7 @@ class UNetRoadSegmenter:
             "input_size": [self.input_size[0], self.input_size[1]],
             "params": self.model.parameter_count,
             "device": str(self.device),
+            "thresholds": {"decision": self.threshold},
         }
         if isinstance(config.get("dataset"), dict):
             self.model_info["dataset_digest"] = config["dataset"].get("digest")
@@ -87,6 +90,12 @@ class UNetRoadSegmenter:
         with self.torch.no_grad():
             logits = self.model(tensor)
             probability = self.torch.sigmoid(logits)
+
+        # 平均二元熵：域内通常 <0.10，域外（如室内/水面）显著升高
+        prob_tensor = probability[0, 0].float().clamp(1e-6, 1 - 1e-6)
+        entropy = -(prob_tensor * self.torch.log(prob_tensor)
+                    + (1 - prob_tensor) * self.torch.log(1 - prob_tensor))
+        self.last_uncertainty = float(entropy.mean().item())
 
         road_probability = probability[0, 0].float().cpu().numpy()
         road_probability = cv2.resize(road_probability, (width, height),

@@ -144,6 +144,8 @@ def assess_road(mask: np.ndarray | None,
                 min_coverage: float = 0.02,
                 max_components: int = 4,
                 min_confidence: float = 0.5,
+                uncertainty: float | None = None,
+                max_uncertainty: float = 0.20,
                 bands: int = 16) -> RoadObservation:
     """把原始 mask 变成带状态与理由的道路观测。"""
     reasons: list[Reason] = []
@@ -163,7 +165,13 @@ def assess_road(mask: np.ndarray | None,
     prof = width_profile(m, bands=bands)
 
     status = RoadMaskStatus.OK
-    if coverage < min_coverage:
+    # 域外/高不确定优先拦截：模型很可能在"自信地乱画"，覆盖率再大也不能信
+    if uncertainty is not None and uncertainty > max_uncertainty:
+        status = RoadMaskStatus.LOW_CONFIDENCE
+        reasons.append(Reason("ROAD_HIGH_UNCERTAINTY",
+                              f"预测熵 {uncertainty:.3f} 高于阈值 {max_uncertainty:.3f}，"
+                              f"可能是训练分布之外的画面"))
+    elif coverage < min_coverage:
         status = RoadMaskStatus.TOO_SMALL
         reasons.append(Reason("ROAD_TOO_SMALL",
                               f"道路面积占比 {coverage:.3f} 低于阈值 {min_coverage}"))

@@ -133,3 +133,44 @@ def test_portrait_needs_rotation():
     from perception.road.orientation import rotation_cw
 
     assert rotation_cw("portrait") != 0
+
+
+# ---------- 不确定性（域外）闸门 ----------
+
+def _road_mask():
+    import numpy as np
+    mask = np.zeros((120, 160), dtype=np.uint8)
+    mask[40:110, 55:105] = 1
+    return mask
+
+
+def test_high_uncertainty_rejects_even_with_large_coverage():
+    """域外画面可能覆盖率很高——不确定性必须优先拦截。"""
+    from perception.road.mask_ops import RoadMaskStatus, assess_road
+
+    road = assess_road(_road_mask(), uncertainty=0.35, max_uncertainty=0.20)
+    assert road.status is RoadMaskStatus.LOW_CONFIDENCE
+    assert any(r.code == "ROAD_HIGH_UNCERTAINTY" for r in road.reasons)
+
+
+def test_low_uncertainty_keeps_ok():
+    from perception.road.mask_ops import RoadMaskStatus, assess_road
+
+    road = assess_road(_road_mask(), uncertainty=0.08, max_uncertainty=0.20)
+    assert road.status is RoadMaskStatus.OK
+
+
+def test_uncertainty_gate_is_optional():
+    """YOLOP 等没有该信号的模型不受影响。"""
+    from perception.road.mask_ops import RoadMaskStatus, assess_road
+
+    road = assess_road(_road_mask(), uncertainty=None, max_uncertainty=0.0)
+    assert road.status is RoadMaskStatus.OK
+
+
+def test_uncertainty_reason_is_traceable():
+    from perception.road.mask_ops import assess_road
+
+    road = assess_road(_road_mask(), uncertainty=0.9, max_uncertainty=0.2)
+    message = next(r.message for r in road.reasons if r.code == "ROAD_HIGH_UNCERTAINTY")
+    assert "0.900" in message and "0.200" in message

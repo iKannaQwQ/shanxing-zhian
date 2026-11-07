@@ -1,2 +1,27 @@
 train 2621 | val 407 | 参数 1,927,009 | 设备 mps | 输入 256x256 | 增强 关
 epoch   1/15  loss 0.8031  RoadIoU 0.1718  mIoU 0.4488  134s  *保存最佳
+epoch   2/15  loss 0.6752  RoadIoU 0.5746  mIoU 0.7253  128s  *保存最佳
+epoch   3/15  loss 0.5929  RoadIoU 0.3736  mIoU 0.6103  121s
+epoch   4/15  loss 0.5183  RoadIoU 0.3629  mIoU 0.6056  127s
+epoch   5/15  loss 0.4629  RoadIoU 0.6608  mIoU 0.7763  131s  *保存最佳
+epoch   6/15  loss 0.4175  RoadIoU 0.3665  mIoU 0.6070  125s
+epoch   7/15  loss 0.3818  RoadIoU 0.6180  mIoU 0.7573  125s
+epoch   8/15  loss 0.3605  RoadIoU 0.5763  mIoU 0.7290  125s
+epoch   9/15  loss 0.3373  RoadIoU 0.5418  mIoU 0.7108  140s
+epoch  10/15  loss 0.3190  RoadIoU 0.1115  mIoU 0.4630  139s
+epoch  11/15  loss 0.3005  RoadIoU 0.4092  mIoU 0.6334  142s
+epoch  12/15  loss 0.2863  RoadIoU 0.6215  mIoU 0.7601  140s
+epoch  13/15  loss 0.2766  RoadIoU 0.5520  mIoU 0.7182  142s
+epoch  14/15  loss 0.2730  RoadIoU 0.5527  mIoU 0.7192  134s
+epoch  15/15  loss 0.2676  RoadIoU 0.5850  mIoU 0.7390  136s
+
+== 独立 Test 集 ==
+  road_iou         0.5813
+  background_iou   0.8410
+  mean_iou         0.7112
+  dice             0.7352
+  precision        0.6009
+  recall           0.9470
+  pixel_accuracy   0.8698
+
+最佳验证 Road IoU 0.6608  权重 perception/weights/aeroscapes_unet_256_bs4_expD.pt

@@ -44,6 +44,8 @@ class PipelineConfig:
     min_road_coverage: float = 0.02
     max_components: int = 4
     min_road_confidence: float = 0.5
+    # 模型平均预测熵上限：超过视为分布外，直接判 LOW_CONFIDENCE
+    max_road_uncertainty: float = 0.20
     max_rocks: int = 50
     min_depth_ratio: float = 0.30
     timeout_ms: float = 2000.0
@@ -163,10 +165,13 @@ class PerceptionPipeline:
         else:
             return assess_road(None)
 
+        uncertainty = getattr(self.road_segmenter, "last_uncertainty", None)
         return assess_road(mask, confidence=conf,
                            min_coverage=self.cfg.min_road_coverage,
                            max_components=self.cfg.max_components,
-                           min_confidence=self.cfg.min_road_confidence)
+                           min_confidence=self.cfg.min_road_confidence,
+                           uncertainty=uncertainty,
+                           max_uncertainty=self.cfg.max_road_uncertainty)
 
     def _detect_rocks(self, inp: FrameInput) -> list[RockObservation]:
         if inp.rocks is not None:
