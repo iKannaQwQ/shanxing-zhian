@@ -1,1 +1,12 @@
 train 2621 | val 407 | 参数 1,927,009 | 设备 mps | 输入 512x512 | 增强 关
+epoch   1/15  loss 0.7756  RoadIoU 0.5320  mIoU 0.7061  530s  *保存最佳
+epoch   2/15  loss 0.6565  RoadIoU 0.2243  mIoU 0.5245  515s
+epoch   3/15  loss 0.5966  RoadIoU 0.5157  mIoU 0.6913  502s
+epoch   4/15  loss 0.5487  RoadIoU 0.3237  mIoU 0.5842  485s
+epoch   5/15  loss 0.5128  RoadIoU 0.5678  mIoU 0.7301  511s  *保存最佳
+epoch   6/15  loss 0.4800  RoadIoU 0.5567  mIoU 0.7212  528s
+epoch   7/15  loss 0.4401  RoadIoU 0.6062  mIoU 0.7462  523s  *保存最佳
+epoch   8/15  loss 0.4200  RoadIoU 0.4427  mIoU 0.6467  489s
+epoch   9/15  loss 0.3878  RoadIoU 0.6091  mIoU 0.7474  549s  *保存最佳
+epoch  10/15  loss 0.3634  RoadIoU 0.6980  mIoU 0.8097  609s  *保存最佳
+epoch  11/15  loss 0.3423  RoadIoU 0.7325  mIoU 0.8304  828s  *保存最佳
