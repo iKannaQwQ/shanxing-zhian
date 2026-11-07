@@ -133,6 +133,10 @@ class PerceptionService:
                 "message": "未部署落石检测器，落石类结论不可用"})
 
         # 契约规定 metrics.timings_ms 是自由结构的数值表，耗时放这里
+        info = getattr(self.segmenter, "model_info", None)
+        if info:
+            report["model"] = dict(info)
+
         report["metrics"].setdefault("timings_ms", {})["perception_total"] = round(
             (time.perf_counter() - started) * 1000, 1)
         return report

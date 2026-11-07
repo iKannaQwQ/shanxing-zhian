@@ -435,6 +435,34 @@
     },
     "msg_type": {
       "const": "perception_report"
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "道路分割模型的版本与输入尺寸（可追溯性用，非必需）",
+      "properties": {
+        "road_segmenter": {
+          "type": "string"
+        },
+        "input_size": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "params": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "device": {
+          "type": "string"
+        },
+        "dataset_digest": {
+          "type": "string"
+        }
+      }
     }
   }
 }

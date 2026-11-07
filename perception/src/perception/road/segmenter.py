@@ -35,6 +35,10 @@ class YolopRoadSegmenter:
         self.img_size = img_size
         self.rotation_cw = 0
         self.device = self._resolve(device)
+        self.model_info = {"road_segmenter": "yolop",
+                           "input_size": [int(img_size), int(img_size)],   # YOLOP 为正方形输入
+                           "params": int(sum(p.numel() for p in self.model.parameters())),
+                           "device": str(self.device)}
 
         self.model = get_net(cfg)
         w = Path(weights) if weights else repo / "weights" / "End-to-end.pth"

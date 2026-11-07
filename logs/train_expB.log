@@ -1,0 +1,27 @@
+train 2621 | val 407 | 参数 1,927,009 | 设备 mps | 输入 512x512 | 增强 开
+epoch   1/15  loss 0.8479  RoadIoU 0.4399  mIoU 0.5757  518s  *保存最佳
+epoch   2/15  loss 0.7740  RoadIoU 0.2194  mIoU 0.5182  515s
+epoch   3/15  loss 0.7458  RoadIoU 0.4677  mIoU 0.6413  501s  *保存最佳
+epoch   4/15  loss 0.7106  RoadIoU 0.0466  mIoU 0.4258  473s
+epoch   5/15  loss 0.6735  RoadIoU 0.5728  mIoU 0.7063  471s  *保存最佳
+epoch   6/15  loss 0.6402  RoadIoU 0.3883  mIoU 0.6087  466s
+epoch   7/15  loss 0.6111  RoadIoU 0.4209  mIoU 0.6282  461s
+epoch   8/15  loss 0.5734  RoadIoU 0.3244  mIoU 0.5820  468s
+epoch   9/15  loss 0.5412  RoadIoU 0.5340  mIoU 0.6999  464s
+epoch  10/15  loss 0.5121  RoadIoU 0.6926  mIoU 0.7990  475s  *保存最佳
+epoch  11/15  loss 0.4877  RoadIoU 0.6327  mIoU 0.7636  498s
+epoch  12/15  loss 0.4763  RoadIoU 0.5483  mIoU 0.7106  477s
+epoch  13/15  loss 0.4620  RoadIoU 0.6391  mIoU 0.7656  481s
+epoch  14/15  loss 0.4615  RoadIoU 0.6345  mIoU 0.7652  483s
+epoch  15/15  loss 0.4461  RoadIoU 0.6428  mIoU 0.7700  487s
+
+== 独立 Test 集 ==
+  road_iou         0.5996
+  background_iou   0.8589
+  mean_iou         0.7292
+  dice             0.7497
+  precision        0.6359
+  recall           0.9129
+  pixel_accuracy   0.8835
+
+最佳验证 Road IoU 0.6926  权重 perception/weights/aeroscapes_unet_512_expB.pt

@@ -16,14 +16,14 @@ from .unet import UNet
 
 class UNetRoadSegmenter:
     def __init__(self, weights: str | Path, device: str = "auto",
-                 input_size: tuple[int, int] = (480, 320), threshold: float = 0.5):
+                 input_size: tuple[int, int] | None = None, threshold: float = 0.5):
         import torch
 
         self.torch = torch
         self.device = self._resolve(device)
         self.rotation_cw = 0
         self.threshold = threshold
-        self.input_size = input_size  # (宽, 高)
+        self.weights = Path(weights)
 
         checkpoint = torch.load(str(weights), map_location=self.device, weights_only=False)
         base = int(checkpoint.get("base", 32))
@@ -31,6 +31,29 @@ class UNetRoadSegmenter:
         state = checkpoint["model"] if isinstance(checkpoint, dict) else checkpoint
         self.model.load_state_dict(state)
         self.model = self.model.to(self.device).eval()
+
+        # 输入尺寸必须与训练时一致：优先用权重里记录的，其次用显式传入，最后才兜底
+        trained_size = checkpoint.get("input_size") if isinstance(checkpoint, dict) else None
+        if trained_size:
+            self.input_size = (int(trained_size[0]), int(trained_size[1]))
+            if input_size and tuple(input_size) != self.input_size:
+                print(f"[unet] 忽略传入的 input_size={input_size}，"
+                      f"使用权重记录的 {self.input_size}", flush=True)
+        elif input_size:
+            self.input_size = (int(input_size[0]), int(input_size[1]))
+        else:
+            self.input_size = (512, 512)
+            print("[unet] 权重未记录 input_size，回退 512x512", flush=True)
+
+        config = checkpoint.get("config", {}) if isinstance(checkpoint, dict) else {}
+        self.model_info = {
+            "road_segmenter": self.weights.stem,
+            "input_size": [self.input_size[0], self.input_size[1]],
+            "params": self.model.parameter_count,
+            "device": str(self.device),
+        }
+        if isinstance(config.get("dataset"), dict):
+            self.model_info["dataset_digest"] = config["dataset"].get("digest")
 
     def _resolve(self, name: str):
         import torch
