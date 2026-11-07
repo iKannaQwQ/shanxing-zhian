@@ -134,5 +134,6 @@ data/          运行时产物（gitignore）
 | [模型接入](docs/17-aeroscapes-integration.md) | ROAD_ROAD_MODEL 接线、契约扩展、域外风险 |
 | [项目审查](docs/18-project-audit.md) | 现状核对、偏离检查、下一阶段计划 |
 | [落石数据集调研](docs/19-rockfall-dataset-survey.md) | 候选核查、失败原因、三条备选路径 |
+| [技术路线重估](docs/20-obstacle-route-evaluation.md) | 从识别落石转向可通行空间；方案 A/B/C 对比 |
 | [前端](docs/08-frontend.md) | 页面结构、枚举、构建 |
 | [M9 验收](docs/11-m9-checklist.md) | 跨端逐项检查清单 |
