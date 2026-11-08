@@ -11,6 +11,7 @@ import traceback
 from dataclasses import dataclass, field
 from typing import Any
 
+import cv2
 import numpy as np
 
 from .depth.align import check_alignment
@@ -48,6 +49,9 @@ class PipelineConfig:
     max_road_uncertainty: float = 0.20
     # 障碍来源：none | geometric（用深度几何，不需要检测模型）
     obstacle_mode: str = "none"
+    # 可通行区来源：road_model（U-Net 道路分割）| plane（深度平面内点）
+    # plane 只适用于"可通行区 = 平整地面"的固定俯视场景（沙盘/桌面）
+    road_source: str = "road_model"
     min_obstacle_height_m: float = 0.008
     min_obstacle_area_px: int = 12
     max_rocks: int = 50
@@ -65,6 +69,7 @@ class PerceptionPipeline:
         self.road_segmenter = road_segmenter
         self.last_road_mask = None
         self.last_obstacle_geometry = None
+        self._geometry_cache_input = None
         self.rock_detector = rock_detector
         self.cfg = config or PipelineConfig()
 
@@ -159,6 +164,10 @@ class PerceptionPipeline:
     # ---------- 内部 ----------
 
     def _segment_road(self, inp: FrameInput):
+        if self.cfg.road_source == "plane" and inp.depth is not None \
+                and inp.intrinsics is not None:
+            return self._plane_corridor(inp)
+
         mask = inp.road_mask
         conf: float | None = None
 
@@ -190,6 +199,49 @@ class PerceptionPipeline:
             rocks = []
         rocks.sort(key=lambda r: r.score, reverse=True)
         return rocks[: self.cfg.max_rocks]
+
+    def _geometry_for(self, inp: FrameInput):
+        """按需计算一次几何结果，供可通行区与障碍检测复用。"""
+        if self._geometry_cache_input is inp and self._last_geometry is not None:
+            return self._last_geometry
+        from .obstacles.geometry import fit_ground_plane
+
+        dh, dw = inp.depth.shape
+        intr = inp.intrinsics.scaled_to(dw, dh)
+        plane, reason = fit_ground_plane(inp.depth.meters, intr.fx, intr.fy, intr.cx, intr.cy)
+        self._last_geometry = (plane, reason, (dh, dw))
+        self._geometry_cache_input = inp
+        return self._last_geometry
+
+    def _plane_corridor(self, inp: FrameInput):
+        """把"平整地面"当作可通行区。仅用于固定俯视的沙盘/桌面场景。"""
+        import numpy as np
+        from .road.mask_ops import assess_road
+        from .status import RoadMaskStatus
+
+        plane, reason, (dh, dw) = self._geometry_for(inp)
+        if plane is None:
+            return assess_road(None)
+
+        # 内点 = 距平面很近的点，即"平整地面"
+        from .obstacles.geometry import _backproject, _dot
+        intr = inp.intrinsics.scaled_to(dw, dh)
+        points, valid = _backproject(inp.depth.meters, intr.fx, intr.fy, intr.cx, intr.cy)
+        residual = _dot(points, plane.normal) + plane.offset
+        flat = np.zeros((dh, dw), dtype=np.uint8)
+        flat[valid] = (np.abs(residual) < max(3.0 * plane.sigma_m, 0.008)).astype(np.uint8)
+
+        # 放大到 RGB 分辨率，与道路 mask 保持一致
+        rh, rw = inp.rgb.shape[:2]
+        mask = cv2.resize(flat, (rw, rh), interpolation=cv2.INTER_NEAREST)
+        road = assess_road(mask, confidence=1.0,
+                           min_coverage=self.cfg.min_road_coverage,
+                           max_components=self.cfg.max_components)
+        if road.status is RoadMaskStatus.OK:
+            road.reasons.append(Reason(
+                "CORRIDOR_FROM_PLANE",
+                "可通行区由深度平面内点给出（固定俯视场景），非道路分割结果"))
+        return road
 
     def _geometric_obstacles(self, inp: FrameInput) -> list[RockObservation]:
         """用 RGB-D 几何找障碍：不识别类别，只判断"高出地面"。"""

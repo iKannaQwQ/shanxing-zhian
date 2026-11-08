@@ -28,6 +28,9 @@ DEFAULT_MIN_HEIGHT_M = 0.008
 DEFAULT_MIN_AREA_PX = 12
 #: 有效深度比例低于该值时不拟合平面（fail-closed）
 DEFAULT_MIN_VALID_RATIO = 0.30
+#: 忽略画面边框这么多像素内的连通域。
+#: 实测深度传感器在边缘有系统偏差，不加抑制会稳定误报（见 docs/22）
+DEFAULT_BORDER_MARGIN_PX = 6
 
 
 @dataclass
@@ -141,7 +144,8 @@ def detect_protrusions(depth: np.ndarray, plane: GroundPlane,
                        fx: float, fy: float, cx: float, cy: float,
                        min_height_m: float = DEFAULT_MIN_HEIGHT_M,
                        min_area_px: int = DEFAULT_MIN_AREA_PX,
-                       sigma_floor_m: float = 0.003) -> list[Protrusion]:
+                       sigma_floor_m: float = 0.003,
+                       border_margin_px: int = DEFAULT_BORDER_MARGIN_PX) -> list[Protrusion]:
     """找出显著高于地面的连通区域。
 
     高度用竖直方向（相机 y 轴）而非沿法向，这样"高出路面"就是字面意义。
@@ -187,6 +191,11 @@ def detect_protrusions(depth: np.ndarray, plane: GroundPlane,
             continue
         x0, y0 = int(stats[i, cv2.CC_STAT_LEFT]), int(stats[i, cv2.CC_STAT_TOP])
         bw, bh = int(stats[i, cv2.CC_STAT_WIDTH]), int(stats[i, cv2.CC_STAT_HEIGHT])
+        # 贴边连通域一律丢弃：边缘深度不可靠，实测会稳定误报
+        if (x0 <= border_margin_px or y0 <= border_margin_px
+                or x0 + bw >= w - border_margin_px
+                or y0 + bh >= h - border_margin_px):
+            continue
         region = labels == i
         peak = float(height_map[region].max())
         mean = float(height_map[region].mean())
@@ -203,6 +212,7 @@ def detect_protrusions(depth: np.ndarray, plane: GroundPlane,
 def detect_obstacles(depth: np.ndarray, fx: float, fy: float, cx: float, cy: float,
                      min_height_m: float = DEFAULT_MIN_HEIGHT_M,
                      min_area_px: int = DEFAULT_MIN_AREA_PX,
+                     border_margin_px: int = DEFAULT_BORDER_MARGIN_PX,
                      image_scale: float = 1.0,
                      label: str = "obstacle:geometric") -> GeometryResult:
     """一步到位：拟合地面 → 找凸起 → 转成 RockObservation 可用的结构。"""
@@ -213,7 +223,8 @@ def detect_obstacles(depth: np.ndarray, fx: float, fy: float, cx: float, cy: flo
 
     protrusions = detect_protrusions(depth, plane, fx, fy, cx, cy,
                                      min_height_m=min_height_m,
-                                     min_area_px=min_area_px)
+                                     min_area_px=min_area_px,
+                                     border_margin_px=border_margin_px)
     return GeometryResult(plane=plane, protrusions=protrusions, reason="OK",
                           valid_ratio=valid_ratio)
 
