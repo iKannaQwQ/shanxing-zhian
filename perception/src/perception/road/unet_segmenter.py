@@ -53,7 +53,6 @@ class UNetRoadSegmenter:
             "input_size": [self.input_size[0], self.input_size[1]],
             "params": self.model.parameter_count,
             "device": str(self.device),
-            "thresholds": {"decision": self.threshold},
         }
         if isinstance(config.get("dataset"), dict):
             self.model_info["dataset_digest"] = config["dataset"].get("digest")

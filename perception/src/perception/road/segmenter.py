@@ -35,15 +35,15 @@ class YolopRoadSegmenter:
         self.img_size = img_size
         self.rotation_cw = 0
         self.device = self._resolve(device)
-        self.model_info = {"road_segmenter": "yolop",
-                           "input_size": [int(img_size), int(img_size)],   # YOLOP 为正方形输入
-                           "params": int(sum(p.numel() for p in self.model.parameters())),
-                           "device": str(self.device)}
-
         self.model = get_net(cfg)
         w = Path(weights) if weights else repo / "weights" / "End-to-end.pth"
         self.model.load_state_dict(self._load(w))
         self.model = self.model.to(self.device).eval()
+        # 必须在 self.model 赋值之后统计参数量
+        self.model_info = {"road_segmenter": "yolop",
+                           "input_size": [int(img_size), int(img_size)],
+                           "params": int(sum(p.numel() for p in self.model.parameters())),
+                           "device": str(self.device)}
 
     def _resolve(self, name: str):
         import torch

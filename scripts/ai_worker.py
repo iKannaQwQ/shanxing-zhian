@@ -58,18 +58,27 @@ def main() -> int:
     ap.add_argument("--batch", type=int, default=2, help="每次拉取的帧数")
     ap.add_argument("--device", default="auto")
     ap.add_argument("--rock-weights", default=None)
-    ap.add_argument("--road-model", default="yolop")
+    ap.add_argument("--road-model", default=None,
+                    help="道路模型：yolop 或 U-Net 权重路径（默认取 ROAD_ROAD_MODEL 或 expE）")
     ap.add_argument("--simulate-rock", default="none",
                     choices=["none", "medium", "high"])
+    ap.add_argument("--obstacle-mode", default="geometric",
+                    choices=["none", "geometric"],
+                    help="障碍来源：geometric=深度几何（默认），none=关闭")
     ap.add_argument("--once", action="store_true", help="处理一轮后退出")
     ap.add_argument("--max-frames", type=int, default=0, help="处理 N 帧后退出，0=不限")
     args = ap.parse_args()
 
     base = args.backend.rstrip("/")
     print(f"[ai-worker] 后端 {base}", flush=True)
+    import os
+    road_model = args.road_model or os.environ.get("ROAD_ROAD_MODEL") or str(
+        ROOT / "perception" / "weights" / "aeroscapes_unet_512_bs8_expE.pt")
+
     service = PerceptionService(device=args.device, rock_weights=args.rock_weights,
                                 simulate_rock=args.simulate_rock,
-                                road_model=args.road_model)
+                                road_model=road_model,
+                                obstacle_mode=args.obstacle_mode)
     print("[ai-worker] 模型就绪，开始轮询", flush=True)
 
     processed = failed = 0
@@ -122,6 +131,15 @@ def main() -> int:
                     else:
                         failed += 1
                         print(f"[ai-worker] 回传失败 HTTP {code}: {response}", flush=True)
+                        # 契约拒绝说明这一帧永远过不了，必须标记失败，否则会被无限重试
+                        try:
+                            http_json(f"{base}/api/v1/ingest/perception", method="POST",
+                                      payload={"frame_id": frame_id,
+                                               "error": f"report rejected: {str(response)[:200]}"})
+                        except Exception:  # noqa: BLE001
+                            pass
+                        import time as _t
+                        _t.sleep(0.2)
                 except Exception as exc:  # noqa: BLE001
                     failed += 1
                     print(f"[ai-worker] 处理 {frame_id[:8]} 出错: {exc}", flush=True)

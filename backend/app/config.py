@@ -34,7 +34,12 @@ class Settings:
     device: str = _env("ROAD_DEVICE", "auto")
     rock_weights: str | None = os.environ.get("ROAD_ROCK_WEIGHTS") or None
     # 道路分割模型: "yolop"（默认）或 U-Net 权重路径（沙盘微调后使用）
-    road_model: str = _env("ROAD_ROAD_MODEL", "yolop")
+    # 默认用当前最佳的沙盘外道路模型（AeroScapes expE，test Road IoU 0.7411）
+    road_model: str = _env(
+        "ROAD_ROAD_MODEL",
+        str(ROOT / "perception" / "weights" / "aeroscapes_unet_512_bs8_expE.pt"))
+    # 障碍来源：none | geometric（深度几何，不需要检测模型）
+    obstacle_mode: str = _env("ROAD_OBSTACLE_MODE", "geometric")
     simulate_rock: str = _env("ROAD_SIMULATE_ROCK", "none")
 
     # 原始帧落盘目录：数据库只存路径，二进制进文件

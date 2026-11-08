@@ -165,6 +165,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "service": "mountain-road-backend",
             "version": "0.2.0",
             "inference": "external",
+            "road_model": settings.road_model,
+            "obstacle_mode": settings.obstacle_mode,
             "uptime_s": round(time.time() - app.state.started_at, 1) if ready() else 0,
             "epoch_ns": now_ns(),
         }
