@@ -22,12 +22,18 @@ ENGINE_BIN = ROOT / "risk_engine" / "build" / "rock_risk_cli"
 class RiskEngine:
     """常驻 C++ 引擎（--stream），每行一帧。"""
 
-    def __init__(self, binary: Path = ENGINE_BIN):
+    def __init__(self, binary: Path = ENGINE_BIN, policy: Path | None = None):
         self.binary = Path(binary)
         if not self.binary.exists():
             raise FileNotFoundError(
                 f"未找到风险引擎 {self.binary}，请先运行 scripts/build_risk_engine.sh")
-        self._process = subprocess.Popen([str(self.binary), "--stream"],
+        self.policy = Path(policy) if policy else None
+        args = [str(self.binary), "--stream"]
+        if self.policy is not None:
+            if not self.policy.exists():
+                raise FileNotFoundError(f"未找到风险策略文件 {self.policy}")
+            args += ["--policy", str(self.policy)]
+        self._process = subprocess.Popen(args,
                                          stdin=subprocess.PIPE,
                                          stdout=subprocess.PIPE,
                                          text=True, bufsize=1)

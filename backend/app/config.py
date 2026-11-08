@@ -40,6 +40,10 @@ class Settings:
         str(ROOT / "perception" / "weights" / "aeroscapes_unet_512_bs8_expE.pt"))
     # 障碍来源：none | geometric（深度几何，不需要检测模型）
     obstacle_mode: str = _env("ROAD_OBSTACLE_MODE", "geometric")
+    # 风险评估策略文件（沙盘标定：单车道 4 cm，双向 8 cm）
+    risk_policy: str = _env(
+        "ROAD_RISK_POLICY",
+        str(ROOT / "risk_engine" / "policy" / "sandbox_4cm_lane.json"))
     simulate_rock: str = _env("ROAD_SIMULATE_ROCK", "none")
 
     # 原始帧落盘目录：数据库只存路径，二进制进文件

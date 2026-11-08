@@ -130,7 +130,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         db = Database(settings.db_path)
         store = ArtifactStore(settings.artifacts_dir)
         hub = ConnectionManager()
-        engine = RiskEngine()
+        engine = RiskEngine(policy=Path(settings.risk_policy))
 
         app.state.db = db
         app.state.store = store
