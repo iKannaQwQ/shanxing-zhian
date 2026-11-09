@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { frameImageURL } from '../../api/client'
-import { normalizeAlternative, normalizePassability, rowToMessage } from '../../api/mappers'
+import { minRemainingWidth, normalizeAlternative, normalizePassability, rowToMessage } from '../../api/mappers'
 import { worstPassability } from '../../api/verdict'
 import {
   ALTERNATIVE_TEXT, PASSABILITY_TEXT, RISK_TEXT,
@@ -46,18 +46,43 @@ const alternative = computed<AlternativeStatus>(
   () => normalizeAlternative(current.value?.alternative) as AlternativeStatus)
 
 const rockCount = computed(() => current.value?.rock_count ?? 0)
+const reasons = computed(() => current.value?.reasons ?? [])
+
+/** 双向各自剩余的通行宽度（米）。几何模式下这是最关键的量化指标。 */
+const directions = computed(() => current.value?.directions ?? [])
+const widthOf = (dir: 'A_TO_B' | 'B_TO_A'): number | null => {
+  const hit = directions.value.find((d) => d.direction === dir)
+  return typeof hit?.remaining_width_m === 'number' ? hit.remaining_width_m : null
+}
+const widthAToB = computed(() => widthOf('A_TO_B'))
+const widthBToA = computed(() => widthOf('B_TO_A'))
+const minWidth = computed(() => minRemainingWidth(directions.value))
+const minWidthText = computed(() =>
+  minWidth.value === null ? '—' : `${(minWidth.value * 100).toFixed(1)} cm`)
+
+/** 障碍与可通行区的证据来源：不能让人误以为是深度学习检测器给的。 */
+const evidenceSource = computed(() => {
+  const codes = reasons.value
+  if (codes.includes('OBSTACLE_SOURCE_GEOMETRIC')) return '深度几何'
+  if (codes.includes('ROCK_DETECTOR_UNAVAILABLE')) return '不可用'
+  return rockCount.value > 0 ? '检测器' : '—'
+})
+const corridorSource = computed(() =>
+  reasons.value.includes('CORRIDOR_FROM_PLANE') ? '平整地面' : '道路分割')
 const coverage = computed(() => {
   const value = current.value?.road_coverage
   return value == null ? null : (value * 100).toFixed(1)
 })
-const reasons = computed(() => current.value?.reasons ?? [])
 
 const rockWarning = computed(() => {
   if (reasons.value.includes('ROCK_DETECTOR_UNAVAILABLE')) {
     return { text: '检测能力不可用', detail: '未部署落石检测器，此结论不构成通行依据', tone: 'unknown' }
   }
   if (rockCount.value > 0) {
-    return { text: `发现 ${rockCount.value} 处落石`, detail: '按侵入范围评估，见风险等级', tone: riskClass.value }
+    return { text: `发现 ${rockCount.value} 处障碍`, detail: '按侵入范围评估，见风险等级', tone: riskClass.value }
+  }
+  if (reasons.value.includes('OBSTACLE_SOURCE_GEOMETRIC')) {
+    return { text: '未检出凸起障碍', detail: '仅能发现高出路面约 8 mm 以上的物体', tone: 'safe' }
   }
   return { text: '未发现落石', detail: '仅在本次观测范围内有效', tone: 'safe' }
 })
@@ -166,6 +191,7 @@ const note = computed(() => riskNote[risk.value] ?? '')
       <div class="hero-row">
         <span class="hero-pill">{{ risk }}</span>
         <span class="hero-risk">风险：{{ riskText }}</span>
+        <span v-if="minWidth !== null" class="hero-risk">最窄剩余：{{ minWidthText }}</span>
       </div>
       <p class="hero-note">{{ note }}</p>
       <div v-if="reasons.length" class="hero-codes">
@@ -180,14 +206,20 @@ const note = computed(() => riskNote[risk.value] ?? '')
         <div class="card-value" :class="`tone-${passAToB.toLowerCase()}`">
           {{ PASSABILITY_TEXT[passAToB] }}
         </div>
-        <div class="card-sub mono">{{ passAToB }}</div>
+        <div class="card-sub mono">
+          {{ passAToB }}
+          <span v-if="widthAToB !== null"> · 剩余 {{ (widthAToB * 100).toFixed(1) }} cm</span>
+        </div>
       </div>
       <div class="card">
         <div class="card-label">B → A 方向</div>
         <div class="card-value" :class="`tone-${passBToA.toLowerCase()}`">
           {{ PASSABILITY_TEXT[passBToA] }}
         </div>
-        <div class="card-sub mono">{{ passBToA }}</div>
+        <div class="card-sub mono">
+          {{ passBToA }}
+          <span v-if="widthBToA !== null"> · 剩余 {{ (widthBToA * 100).toFixed(1) }} cm</span>
+        </div>
       </div>
     </div>
 
@@ -199,7 +231,10 @@ const note = computed(() => riskNote[risk.value] ?? '')
           <span class="pill" :class="rockWarning.tone">{{ rockCount }} 处</span>
         </div>
         <div class="card-value" :class="`tone-${rockWarning.tone}`">{{ rockWarning.text }}</div>
-        <div class="card-sub">{{ rockWarning.detail }}</div>
+        <div class="card-sub">
+          {{ rockWarning.detail }}<br />
+          证据来源 {{ evidenceSource }} · 可通行区 {{ corridorSource }}
+        </div>
       </div>
       <div class="card">
         <div class="card-label">道路受阻情况</div>

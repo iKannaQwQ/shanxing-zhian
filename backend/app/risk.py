@@ -112,6 +112,8 @@ def perception_to_message(frame: dict, report: dict, status: dict) -> dict:
         "overall_risk": status["overall_risk"],
         "system_status": status["system_status"],
         "passability": status.get("passability", {}),
+        # 双向各自的可通行性与剩余宽度（沙盘标定后这是核心指标）
+        "directions": status.get("directions", []),
         "alternative": status.get("alternative_path", {}).get("status"),
         "road_status": report.get("road_mask_status"),
         "road_coverage": report.get("road", {}).get("coverage_ratio"),

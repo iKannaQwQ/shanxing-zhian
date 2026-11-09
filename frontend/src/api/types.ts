@@ -109,6 +109,15 @@ export interface AssessmentMessage {
   processing_ms: number
   dropped_since_last: number
   reasons: string[]
+  /** 双向各自的判定与剩余可通行宽度（米） */
+  directions?: DirectionAssessment[]
+}
+
+export interface DirectionAssessment {
+  direction: 'A_TO_B' | 'B_TO_A'
+  risk?: string
+  passability?: string
+  remaining_width_m?: number | null
 }
 
 export const RISK_TEXT: Record<RiskLevel, string> = {

@@ -1,4 +1,4 @@
-import type { AssessmentMessage, AssessmentRow, Passability } from './types'
+import type { AssessmentMessage, AssessmentRow, DirectionAssessment, Passability } from './types'
 
 /** 后端 RESTRICTED -> 产品词表 PARTIALLY_BLOCKED，其余原样。 */
 export function normalizePassability(raw: unknown): Passability {
@@ -24,11 +24,29 @@ function reasonsFromJson(raw: unknown): string[] {
   try {
     const parsed = JSON.parse(raw) as { reasons?: Array<{ code?: string }> }
     return Array.isArray(parsed.reasons)
-      ? parsed.reasons.map((r) => r?.code).filter((c): c is string => typeof c === 'string').slice(0, 4)
+      ? parsed.reasons.map((r) => r?.code).filter((c): c is string => typeof c === 'string').slice(0, 6)
       : []
   } catch {
     return []
   }
+}
+
+function directionsFromJson(raw: unknown): DirectionAssessment[] {
+  if (typeof raw !== 'string') return []
+  try {
+    const parsed = JSON.parse(raw) as { directions?: DirectionAssessment[] }
+    return Array.isArray(parsed.directions) ? parsed.directions : []
+  } catch {
+    return []
+  }
+}
+
+/** 取双向中最小的剩余宽度（米）；没有米制数据时返回 null。 */
+export function minRemainingWidth(directions: DirectionAssessment[]): number | null {
+  const values = directions
+    .map((d) => d.remaining_width_m)
+    .filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
+  return values.length ? Math.min(...values) : null
 }
 
 /** 数据库行 -> 与 WebSocket 推送一致的消息结构。 */
@@ -53,5 +71,6 @@ export function rowToMessage(row: AssessmentRow | Record<string, unknown>): Asse
     processing_ms: Number(r.processing_ms ?? 0),
     dropped_since_last: 0,
     reasons: reasonsFromJson(r.json),
+    directions: directionsFromJson(r.json),
   }
 }

@@ -62,7 +62,12 @@ def main() -> int:
                     help="道路模型：yolop 或 U-Net 权重路径（默认取 ROAD_ROAD_MODEL 或 expE）")
     ap.add_argument("--simulate-rock", default="none",
                     choices=["none", "medium", "high"])
-    ap.add_argument("--obstacle-mode", default="geometric",
+    import os as _os
+    ap.add_argument("--road-source", default=_os.environ.get("ROAD_ROAD_SOURCE", "road_model"),
+                    choices=["road_model", "plane"],
+                    help="可通行区来源：road_model=U-Net，plane=深度平面（固定俯视）")
+    ap.add_argument("--obstacle-mode",
+                    default=_os.environ.get("ROAD_OBSTACLE_MODE", "geometric"),
                     choices=["none", "geometric"],
                     help="障碍来源：geometric=深度几何（默认），none=关闭")
     ap.add_argument("--once", action="store_true", help="处理一轮后退出")
@@ -78,7 +83,8 @@ def main() -> int:
     service = PerceptionService(device=args.device, rock_weights=args.rock_weights,
                                 simulate_rock=args.simulate_rock,
                                 road_model=road_model,
-                                obstacle_mode=args.obstacle_mode)
+                                obstacle_mode=args.obstacle_mode,
+                                road_source=args.road_source)
     print("[ai-worker] 模型就绪，开始轮询", flush=True)
 
     processed = failed = 0

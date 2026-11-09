@@ -81,7 +81,7 @@ class PerceptionService:
 
     def __init__(self, device: str = "auto", rock_weights: str | None = None,
                  simulate_rock: str = "none", road_model: str = "yolop",
-                 obstacle_mode: str = "none"):
+                 obstacle_mode: str = "none", road_source: str = "road_model"):
         self.device = device
         self.simulate_rock = simulate_rock
         self.obstacle_mode = obstacle_mode
@@ -106,7 +106,8 @@ class PerceptionService:
 
         self.pipeline = PerceptionPipeline(
             road_segmenter=self.segmenter, rock_detector=detector,
-            config=PipelineConfig(obstacle_mode=obstacle_mode))
+            config=PipelineConfig(obstacle_mode=obstacle_mode,
+                                  road_source=road_source))
 
     def process_bytes(self, metadata: dict, rgb_bytes: bytes, depth_bytes: bytes,
                       confidence_bytes: bytes | None) -> dict[str, Any]:
