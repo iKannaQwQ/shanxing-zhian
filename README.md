@@ -27,21 +27,54 @@ bash scripts/stop_all.sh      # 停止
 
 ---
 
+## 现在这套系统到底在做什么
+
+**不再是"识别落石是什么"，而是"路面上有没有东西挡住可通行空间"。**
+
+```
+U-Net 道路分割 / 深度平面  →  可通行区
+        +
+RGB-D 几何异常检测        →  高出地面的障碍
+        ↓
+侵入判定（接地区域求交、最窄剩余宽度）
+        ↓
+C++ 风险引擎（fail-closed）
+        ↓
+Web 页面：风险等级 + 双向通行性 + 剩余厘米数 + 证据来源
+```
+
+障碍**不做类别识别**：石块、碎石、土块、树枝在业务上统一按"道路障碍物"处理。
+这条路线的依据是 `docs/20` 的方案对比，以及 `docs/22` 的真实数据验证。
+
+---
+
 ## 当前状态
 
 | 模块 | 状态 | 说明 |
 |---|---|---|
 | 契约与校验 | ✅ | 5 个 JSON Schema + 语义不变量，12/12 通过 |
-| C++ 风险引擎 | ✅ | 46 项测试；fail-closed 判定规则 |
+| C++ 风险引擎 | ✅ | 46 项测试；fail-closed；支持 `--policy` 外部标定 |
 | iOS 采集端 | ✅ | M1–M7；真机 1086 帧零丢失；热自适应降级；朝向自动转正 |
-| Python 感知 | 🟡 | 71 项测试通过；**道路分割在俯视场景不适用，需微调** |
-| FastAPI 后端 | ✅ | 14 项测试；推理与后端解耦；文件存储 + SQLite + WebSocket |
-| Vue 前端 | ✅ | 用户端 + 管理后台 5 页；M9 真机待验 |
-| 沙盘训练管线 | ✅ | 合成数据冒烟通过（IoU 0.96），真实数据未到 |
-| 落石检测器 | ❌ | 无可用权重 → 系统输出 `UNKNOWN` |
+| 道路分割 | 🟡 | AeroScapes expE，test Road IoU **0.7411**；**未在沙盘验证** |
+| RGB-D 几何障碍 | ✅ | 真实数据验证：σ=1.42 mm，可检出 ≥8 mm 凸起，37–43 ms/帧 |
+| 风险标定 | ✅ | 沙盘尺度：单车道 4 cm / 双向 8 cm，见 `docs/22 §9` |
+| 前端 | 🟡 | 已显示剩余厘米数与证据来源；**未做多浏览器/真机验收** |
 | Windows 部署 | ❌ | 脚本已写，**从未在 Windows 上执行** |
+| 沙盘目标域 | ❌ | **尚无沙盘数据**；桌面数据已用于方法验证 |
 
-测试总览：Python 85 项 · C++ 46 项 · 契约 12/12。
+测试总览：Python **99** 项 · C++ **46/46** · 契约 **12/12**。
+
+### 五组道路分割实验（独立测试集 241 张）
+
+| 实验 | 配置 | test Road IoU |
+|---|---|---|
+| A | 512 / bs4 | 0.6447 |
+| B | 512 / bs4 + 增强 | 0.5996 |
+| C | 256 / bs8 | 0.6946 |
+| D | 256 / bs4 | 0.5813 |
+| **E（默认）** | **512 / bs8** | **0.7411** |
+
+数据划分按**视频序列**分组，train/val/test 序列零交集。详见 `docs/15`、`docs/16`。
 
 ---
 
@@ -55,6 +88,8 @@ iPhone (ARKit RGB-D)  --HTTP multipart-->  后端 (FastAPI)
                                               │  轮询
                                               ▼
                                         AI worker（模型在这）
+                                         ├─ 道路分割（U-Net / 平面）
+                                         └─ 几何障碍（深度）
                                               │  POST 感知结果
                                               ▼
                                         风险引擎 (C++) → SQLite
@@ -79,7 +114,7 @@ contracts/     JSON Schema + 样例 + 校验器（跨语言唯一真源）
 docs/          架构、协议、风险模型、后端 API、运行手册
 ios/           Swift + SwiftUI + ARKit 采集端
 perception/    Python 感知库 + 训练工具
-risk_engine/   C++17 风险评估引擎
+risk_engine/   C++17 风险评估引擎（policy/ 下为标定文件）
 backend/       FastAPI + SQLite + WebSocket
 frontend/      Vue 3 + TS + Element Plus
 scripts/       启停、自检、标定、数据准备
@@ -95,7 +130,7 @@ data/          运行时产物（gitignore）
 3. `depth_source=NONE` 的落石不得参与阻断判定
 4. 盲弯超视距 → 替代通行 `verifiable=false`
 5. 仅"道路空白"不构成可绕行证据
-6. 未检测到落石 ≠ 安全，还需观测覆盖率达标
+6. 未检测到落石 ≠ 安全，还需观测覆盖率与数据质量达标
 7. 所有结论必须携带 `reasons[]` 与 `disclaimer_version`
 
 对应规则编号见 `contracts/validate.py` 中的 `P*` / `R*` / `C*`。
@@ -104,14 +139,21 @@ data/          运行时产物（gitignore）
 
 ## 已知限制
 
-1. **没有落石检测器** → 系统恒为 `DEGRADED`，结论恒为 `UNKNOWN`。这是设计，不是 bug。
-2. **YOLOP 在俯视机位结构性不适用**（训练自前视行车视角），沙盘需自训练 U-Net，
-   见 [拍摄几何](docs/12-camera-geometry.md)。
-3. **深度值的米制精度未标定**（只验证了几何对齐，见 [感知](docs/03-perception.md)）。
-4. **风险引擎阈值是占位值**（`vehicle_width_m` 等），需沙盘实测后替换。
-5. **Windows 部署未验证**；`build_risk_engine.ps1` 与 PowerShell 步骤均未实机执行。
-6. **前端未做真机/多浏览器确认**，清单见 [M9 验收](docs/11-m9-checklist.md)。
-7. `contracts/samples/` 中标 `source: SIMULATED` 的均为**构造样例**，不是模型输出。
+1. **3–5 mm 小颗粒不可见**（物理限制，非参数问题）。
+   实测：每深度像素 2.01 mm，颗粒区最大高度 1.3 mm，噪声 σ=1.31 mm。
+   LiDAR 光斑大于颗粒，信号被平均进桌面。见 `docs/22 §3.1`。
+2. **只认"凸起"，不认"平躺"**：薄片、贴地石块、透明物体不会触发。
+3. **`road_source=plane` 只适用于固定俯视**：它把整片平整地面当可通行区，
+   真实道路上会把人行道、路肩也算进去。沙盘里若需区分 4 cm 道路，必须用 `road_model`。
+4. **道路分割未在沙盘验证**：0.7411 是 AeroScapes 航拍测试集成绩，
+   不能外推到桌面/沙盘域。
+5. **没有语义分类**：系统不会告诉你"这是落石还是纸箱"，只说"这里有东西高出地面"。
+6. **风险阈值按沙盘标定**（单车道 4 cm），换场景需改 `risk_engine/policy/*.json`。
+7. **Windows 部署未验证**；`build_risk_engine.ps1` 与 PowerShell 步骤均未实机执行。
+8. **前端未做多浏览器/真机确认**，清单见 [M9 验收](docs/11-m9-checklist.md)。
+9. `contracts/samples/` 中标 `source: SIMULATED` 的均为**构造样例**，不是模型输出。
+10. **双向判定目前共享同一走廊**（`SHARED_CORRIDOR`）：A→B 与 B→A 恒相同。
+    改造方案已记录在 `docs/18 §C.2`，尚未实施。
 
 ---
 
@@ -130,12 +172,12 @@ data/          运行时产物（gitignore）
 | [拍摄几何](docs/12-camera-geometry.md) | 俯视机位、视场计算、安装高度 |
 | [沙盘管线](docs/09-sandbox-pipeline.md) | 数据约定、训练、评估、切换模型 |
 | [AeroScapes 训练](docs/15-aeroscapes-stage1.md) | 数据集核实、类别解析、划分、训练 |
-| [训练结果](docs/16-aeroscapes-training-results.md) | 实验 A/B/C 指标、失效分析、闸门评估 |
+| [训练结果](docs/16-aeroscapes-training-results.md) | A–E 指标、失效分析、闸门评估 |
 | [模型接入](docs/17-aeroscapes-integration.md) | ROAD_ROAD_MODEL 接线、契约扩展、域外风险 |
 | [项目审查](docs/18-project-audit.md) | 现状核对、偏离检查、下一阶段计划 |
-| [落石数据集调研](docs/19-rockfall-dataset-survey.md) | 候选核查、失败原因、三条备选路径 |
-| [技术路线重估](docs/20-obstacle-route-evaluation.md) | 从识别落石转向可通行空间；方案 A/B/C 对比 |
-| [目标域采集](docs/21-target-domain-capture.md) | 0.64 m 俯视拍摄规范，30–50 帧 |
-| [目标域验证](docs/22-target-domain-validation.md) | 972 帧真实数据：σ=1.42mm，SAFE 44% / MEDIUM 56% |
+| [落石数据集调研](docs/19-rockfall-dataset-survey.md) | 候选核查、失败原因、备选路径 |
+| [技术路线重估](docs/20-obstacle-route-evaluation.md) | 从识别落石转向可通行空间；方案对比 |
+| [目标域采集](docs/21-target-domain-capture.md) | 俯视拍摄规范、场景清单、最小可接受版本 |
+| [目标域验证](docs/22-target-domain-validation.md) | 972 帧真实数据、尺度换算、策略标定 |
 | [前端](docs/08-frontend.md) | 页面结构、枚举、构建 |
 | [M9 验收](docs/11-m9-checklist.md) | 跨端逐项检查清单 |
