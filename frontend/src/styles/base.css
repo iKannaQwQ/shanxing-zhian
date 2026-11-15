@@ -29,7 +29,8 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  max-width: 1080px;
+  /* 监控大屏布局需要更宽的画布；窄屏仍由内容自适应 */
+  max-width: 1440px;
   margin: 0 auto;
 }
 

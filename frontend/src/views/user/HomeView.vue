@@ -140,157 +140,267 @@ const note = computed(() => riskNote[risk.value] ?? '')
 </script>
 
 <template>
-  <div class="home">
-    <!-- 连接与时间 -->
-    <div class="topline">
-      <div class="live-badge" :class="{ on: connected }">
-        <span class="led" />
-        <span v-if="connected">实时 · 已收 {{ received }} 条</span>
+  <div class="dash">
+    <!-- 顶栏 -->
+    <header class="dash-head">
+      <div class="dash-title">
+        <span class="live-badge" :class="{ on: connected }"><span class="led" /></span>
+        <strong>山区公路落石预警</strong>
+        <span class="dash-sub">实时监控</span>
+      </div>
+      <div class="dash-meta">
+        <span v-if="connected" class="dash-live">实时 · 已收 {{ received }} 条</span>
         <span v-else-if="status" class="muted">离线，显示最近一次结果</span>
         <span v-else class="muted">正在连接…</span>
+        <span class="stamp mono">{{ updatedAt }} · {{ ageText }}</span>
       </div>
-      <div class="stamp mono">更新 {{ updatedAt }} · {{ ageText }}</div>
-    </div>
+    </header>
 
+    <!-- 告警条 -->
     <el-alert
       v-if="statusError"
       type="error" :closable="false" show-icon
       title="后端不可达"
       :description="`${statusError}。请确认服务已启动，然后再刷新。`"
-      style="margin-bottom: 12px"
+      style="margin-bottom: 8px"
     />
-
     <el-alert
       v-if="isDemo"
       type="warning" :closable="false" show-icon
       title="DEMO 数据"
       description="当前展示的是注入的模拟检测结果，不是真实推理输出。仅用于界面联调。"
-      style="margin-bottom: 12px"
+      style="margin-bottom: 8px"
     />
-
     <el-alert
       v-if="stale"
       type="warning" :closable="false" show-icon
       title="数据已过期"
-      :description="`最近一次判定在 ${ageText}，之后没有新数据。下方是历史结果，不代表现在的路况。`"
-      style="margin-bottom: 12px"
+      :description="`最近一次判定在 ${ageText}，之后没有新数据。画面与判定均为历史结果，不代表现在的路况。`"
+      style="margin-bottom: 8px"
     />
-
     <el-alert
       v-if="wsError"
       type="info" :closable="false" show-icon
       :title="`实时通道异常：${wsError}`"
       description="页面会自动重连；期间结果来自轮询。"
-      style="margin-bottom: 12px"
+      style="margin-bottom: 8px"
     />
 
-    <!-- 总体状态 -->
-    <section class="hero" :class="riskClass">
-      <div class="hero-label">道路总体状态</div>
-      <div class="hero-value">{{ overallPassText }}</div>
-      <div class="hero-row">
-        <span class="hero-pill">{{ risk }}</span>
-        <span class="hero-risk">风险：{{ riskText }}</span>
-        <span v-if="minWidth !== null" class="hero-risk">最窄剩余：{{ minWidthText }}</span>
-      </div>
-      <p class="hero-note">{{ note }}</p>
-      <div v-if="reasons.length" class="hero-codes">
-        理由：<span v-for="code in reasons" :key="code" class="code">{{ code }}</span>
-      </div>
-    </section>
+    <div class="dash-body">
+      <!-- 左：实时画面 -->
+      <section class="viewer">
+        <div class="viewer-frame" :class="{ 'is-stale': stale }">
+          <img
+            v-if="imageURL && !imageBroken"
+            :src="imageURL" alt="最新采集画面"
+            @error="imageBroken = true"
+          />
+          <div v-else class="image-empty">
+            {{ imageURL ? '影像不可用（可能已超出保留窗口）' : '暂无画面' }}
+          </div>
 
-    <!-- 方向 -->
-    <div class="two">
-      <div class="card">
-        <div class="card-label">A → B 方向</div>
-        <div class="card-value" :class="`tone-${passAToB.toLowerCase()}`">
-          {{ PASSABILITY_TEXT[passAToB] }}
-        </div>
-        <div class="card-sub mono">
-          {{ passAToB }}
-          <span v-if="widthAToB !== null"> · 剩余 {{ (widthAToB * 100).toFixed(1) }} cm</span>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-label">B → A 方向</div>
-        <div class="card-value" :class="`tone-${passBToA.toLowerCase()}`">
-          {{ PASSABILITY_TEXT[passBToA] }}
-        </div>
-        <div class="card-sub mono">
-          {{ passBToA }}
-          <span v-if="widthBToA !== null"> · 剩余 {{ (widthBToA * 100).toFixed(1) }} cm</span>
-        </div>
-      </div>
-    </div>
+          <div class="hud hud-tl">
+            <span class="hud-chip" :class="riskClass">{{ risk }}</span>
+            <span class="hud-text">{{ riskText }}</span>
+          </div>
+          <div class="hud hud-tr mono">{{ updatedAt }}</div>
+          <div class="hud hud-bl">
+            <span>最窄剩余 <strong>{{ minWidthText }}</strong></span>
+            <span class="hud-sep">·</span>
+            <span><strong>{{ rockCount }}</strong> 处障碍</span>
+          </div>
 
-    <!-- 落石 / 受阻 -->
-    <div class="two">
-      <div class="card">
-        <div class="card-label">
-          <span>落石预警</span>
-          <span class="pill" :class="rockWarning.tone">{{ rockCount }} 处</span>
+          <div v-if="stale" class="image-overlay">数据已过期</div>
         </div>
-        <div class="card-value" :class="`tone-${rockWarning.tone}`">{{ rockWarning.text }}</div>
-        <div class="card-sub">
-          {{ rockWarning.detail }}<br />
-          证据来源 {{ evidenceSource }} · 可通行区 {{ corridorSource }}
+        <div class="viewer-foot">
+          <span class="mono">证据 {{ evidenceSource }} · 可通行区 {{ corridorSource }}</span>
+          <span class="mono">道路覆盖 {{ coverage ?? '—' }}% · 掩码 {{ current?.road_status ?? '—' }}</span>
         </div>
-      </div>
-      <div class="card">
-        <div class="card-label">道路受阻情况</div>
-        <div class="card-value" :class="`tone-${overallPassability.toLowerCase()}`">
-          {{ overallPassText }}
-        </div>
-        <div class="card-sub">
-          道路覆盖率 {{ coverage ?? '—' }}% · 掩码 {{ current?.road_status ?? '—' }}
-        </div>
-      </div>
-    </div>
+      </section>
 
-    <!-- 替代通行 -->
-    <div class="card">
-      <div class="card-label">替代通行空间评估</div>
-      <div class="card-value" :class="alternative === 'AVAILABLE' ? 'tone-safe' : 'tone-unknown'">
-        {{ ALTERNATIVE_TEXT[alternative] ?? alternative }}
-      </div>
-      <div class="card-sub mono">{{ alternative }}</div>
-    </div>
+      <!-- 右：判定数据 -->
+      <aside class="panel">
+        <section class="hero" :class="riskClass">
+          <div class="hero-label">道路总体状态</div>
+          <div class="hero-value">{{ overallPassText }}</div>
+          <div class="hero-row">
+            <span class="hero-pill">{{ risk }}</span>
+            <span class="hero-risk">风险：{{ riskText }}</span>
+            <span v-if="minWidth !== null" class="hero-risk">最窄剩余：{{ minWidthText }}</span>
+          </div>
+          <p class="hero-note">{{ note }}</p>
+          <div v-if="reasons.length" class="hero-codes">
+            理由：<span v-for="code in reasons" :key="code" class="code">{{ code }}</span>
+          </div>
+        </section>
 
-    <!-- 最新画面 -->
-    <div class="card image-card">
-      <div class="card-label">
-        <span>最新画面</span>
-        <span class="mono muted">{{ updatedAt }}</span>
-      </div>
-      <div v-if="imageURL && !imageBroken" class="image-wrap" :class="{ dim: stale }">
-        <img :src="imageURL" alt="最新采集画面" @error="imageBroken = true" />
-        <div v-if="stale" class="image-overlay">数据已过期</div>
-      </div>
-      <div v-else class="image-empty">
-        {{ imageURL ? '影像不可用（可能已超出保留窗口）' : '暂无画面' }}
-      </div>
+        <div class="two">
+          <div class="card">
+            <div class="card-label">A → B 方向</div>
+            <div class="card-value" :class="`tone-${passAToB.toLowerCase()}`">
+              {{ PASSABILITY_TEXT[passAToB] }}
+            </div>
+            <div class="card-sub mono">
+              {{ passAToB }}
+              <span v-if="widthAToB !== null"> · 剩余 {{ (widthAToB * 100).toFixed(1) }} cm</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-label">B → A 方向</div>
+            <div class="card-value" :class="`tone-${passBToA.toLowerCase()}`">
+              {{ PASSABILITY_TEXT[passBToA] }}
+            </div>
+            <div class="card-sub mono">
+              {{ passBToA }}
+              <span v-if="widthBToA !== null"> · 剩余 {{ (widthBToA * 100).toFixed(1) }} cm</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="two">
+          <div class="card">
+            <div class="card-label">
+              <span>障碍预警</span>
+              <span class="pill" :class="rockWarning.tone">{{ rockCount }} 处</span>
+            </div>
+            <div class="card-value" :class="`tone-${rockWarning.tone}`">{{ rockWarning.text }}</div>
+            <div class="card-sub">{{ rockWarning.detail }}</div>
+          </div>
+          <div class="card">
+            <div class="card-label">道路受阻情况</div>
+            <div class="card-value" :class="`tone-${overallPassability.toLowerCase()}`">
+              {{ overallPassText }}
+            </div>
+            <div class="card-sub">
+              覆盖率 {{ coverage ?? '—' }}% · 掩码 {{ current?.road_status ?? '—' }}
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-label">替代通行空间评估</div>
+          <div class="card-value" :class="alternative === 'AVAILABLE' ? 'tone-safe' : 'tone-unknown'">
+            {{ ALTERNATIVE_TEXT[alternative] ?? alternative }}
+          </div>
+          <div class="card-sub mono">{{ alternative }}</div>
+        </div>
+      </aside>
     </div>
   </div>
 </template>
 
 <style scoped>
-.home { display: flex; flex-direction: column; gap: 12px; }
+.dash { display: flex; flex-direction: column; gap: 12px; }
 
-.topline {
+/* 顶栏 */
+.dash-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  font-size: 12px;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
 }
-
+.dash-title { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+.dash-sub { color: var(--muted); font-size: 12px; letter-spacing: 0.04em; }
+.dash-meta { display: flex; align-items: center; gap: 12px; font-size: 12px; }
+.dash-live { color: #16a34a; font-weight: 600; }
 .stamp { color: var(--muted); }
 .muted { color: var(--muted); }
 
-/* 总体状态 */
+/* 主区：左画面 右数据 */
+.dash-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(330px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+/* 左：画面 */
+.viewer { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.viewer-frame {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #06090d;
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 30px rgba(2, 6, 23, 0.18);
+}
+.viewer-frame img { display: block; width: 100%; height: auto; }
+.viewer-frame.is-stale img { opacity: 0.45; filter: grayscale(0.55); }
+
+.hud {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(2, 6, 23, 0.62);
+  color: #e5e7eb;
+  font-size: 12px;
+  backdrop-filter: blur(3px);
+}
+.hud-tl { top: 12px; left: 12px; }
+.hud-tr { top: 12px; right: 12px; font-size: 11px; opacity: 0.9; }
+.hud-bl { bottom: 12px; left: 12px; }
+.hud-bl strong { font-size: 14px; }
+.hud-sep { opacity: 0.5; }
+.hud-chip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #6b7280;
+  color: #fff;
+}
+.hud-chip.safe { background: #16a34a; }
+.hud-chip.low { background: #ca8a04; }
+.hud-chip.medium { background: #ea580c; }
+.hud-chip.high { background: #dc2626; }
+.hud-chip.unknown { background: #6b7280; }
+.hud-text { font-weight: 600; }
+
+.image-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  background: rgba(17, 24, 39, 0.35);
+}
+.image-empty {
+  padding: 90px 12px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.viewer-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* 右：数据面板 */
+.panel { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
 .hero {
   border-radius: 14px;
-  padding: 20px 20px 18px;
+  padding: 18px 18px 16px;
   color: #fff;
 }
 .hero.safe { background: linear-gradient(135deg, #15803d, #16a34a); }
@@ -300,7 +410,7 @@ const note = computed(() => riskNote[risk.value] ?? '')
 .hero.unknown { background: linear-gradient(135deg, #374151, #6b7280); }
 
 .hero-label { font-size: 12px; opacity: 0.85; letter-spacing: 0.06em; }
-.hero-value { font-size: 40px; font-weight: 700; line-height: 1.15; margin: 4px 0 8px; }
+.hero-value { font-size: 36px; font-weight: 700; line-height: 1.15; margin: 4px 0 8px; }
 .hero-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .hero-pill {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -322,34 +432,12 @@ const note = computed(() => riskNote[risk.value] ?? '')
 
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
-/* 图像 */
-.image-card { padding-bottom: 10px; }
-.image-wrap { position: relative; border-radius: 10px; overflow: hidden; background: #0b0f14; }
-.image-wrap img { display: block; width: 100%; height: auto; }
-.image-wrap.dim img { opacity: 0.45; filter: grayscale(0.5); }
-.image-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  background: rgba(17, 24, 39, 0.35);
+@media (max-width: 1080px) {
+  .dash-body { grid-template-columns: 1fr; }
+  .viewer-frame { min-height: 240px; }
 }
-.image-empty {
-  padding: 34px 12px;
-  text-align: center;
-  color: var(--muted);
-  font-size: 13px;
-  background: #0b0f14;
-  border-radius: 10px;
-}
-
 @media (max-width: 560px) {
   .two { grid-template-columns: 1fr; }
-  .hero-value { font-size: 32px; }
+  .hero-value { font-size: 30px; }
 }
 </style>
