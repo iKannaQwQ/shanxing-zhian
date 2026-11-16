@@ -180,12 +180,14 @@ WS  /ws/status ──────┘
 
 | 项 | 状态 |
 |---|---|
-| 编译（含 iPad 配置） | ✅ `BUILD SUCCEEDED` |
+| 编译（iphonesimulator） | ✅ `BUILD SUCCEEDED` |
+| 编译（iphoneos / arm64 真机） | ✅ `BUILD SUCCEEDED` |
 | 产物 `UISupportedInterfaceOrientations~ipad` | ✅ 四向 |
 | 产物 `UIRequiresFullScreen` | ✅ `false` |
 | 产物 `UIDeviceFamily` | ✅ `[1, 2]` |
-| **iPad 真机运行** | ❌ **未验证** |
+| iPad 真机运行 | ⬜ 设备可用，**尚未执行** |
 | 横竖屏切换 | ❌ 未验证 |
 | 分屏 / Slide Over | ❌ 未验证 |
 
-> 以上均为编译期与产物核对，**不代表在 iPad 8 上的实际显示效果**。
+> 以上均为编译期与产物核对。iPad 8 设备可用，但**尚未在设备上运行**，
+> 因此横竖屏与分屏的实际显示效果仍未验证。
