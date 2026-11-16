@@ -24,6 +24,7 @@ struct SetupView: View {
     @FocusState private var focused: Bool
 
     var body: some View {
+        ScrollView {
         VStack(spacing: 0) {
             Spacer(minLength: 32)
 
@@ -82,6 +83,12 @@ struct SetupView: View {
 
             Spacer(minLength: 32)
         }
+        .frame(maxWidth: 520)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear { input = config.displayText }
     }
 

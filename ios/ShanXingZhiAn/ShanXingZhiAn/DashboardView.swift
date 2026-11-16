@@ -13,9 +13,12 @@ struct DashboardView: View {
         _vm = StateObject(wrappedValue: DashboardViewModel(base: base))
     }
 
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
     var body: some View {
         GeometryReader { geo in
-            let wide = geo.size.width >= 820
+            // iPad 横屏 / 大窗口才分栏；竖屏与分屏时上下堆叠，画面更大
+            let wide = geo.size.width >= 900
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     header
@@ -23,7 +26,7 @@ struct DashboardView: View {
                     if wide {
                         HStack(alignment: .top, spacing: 14) {
                             viewer
-                            panel.frame(width: min(420, geo.size.width * 0.4))
+                            panel.frame(width: min(460, geo.size.width * 0.38))
                         }
                     } else {
                         VStack(spacing: 12) {
@@ -33,7 +36,10 @@ struct DashboardView: View {
                     }
                     footer
                 }
-                .padding(14)
+                .padding(wide ? 20 : 14)
+                // 大屏不无限拉伸，超出部分居中留白
+                .frame(maxWidth: 1280)
+                .frame(maxWidth: .infinity)
             }
         }
         .background(Color(.systemGroupedBackground))
@@ -194,7 +200,7 @@ struct DashboardView: View {
             VStack(spacing: 10) {
                 hero(reading)
 
-                HStack(spacing: 10) {
+                HStack(spacing: sizeClass == .regular ? 14 : 10) {
                     directionCard(title: "A → B", passability: reading.passabilityAToB,
                                   width: reading.widthAToB)
                     directionCard(title: "B → A", passability: reading.passabilityBToA,
@@ -246,7 +252,7 @@ struct DashboardView: View {
                 .font(.caption)
                 .foregroundStyle(.white.opacity(0.85))
             Text(reading.overallPassability.text)
-                .font(.system(size: 26, weight: .bold))
+                .font(.system(size: sizeClass == .regular ? 32 : 26, weight: .bold))
                 .foregroundStyle(.white)
             HStack(spacing: 10) {
                 Text(reading.risk.rawValue)

@@ -129,3 +129,63 @@ WS  /ws/status ──────┘
 4. 首次运行后在系统设置里信任开发者证书
 
 **以上步骤未实际执行过。**
+
+---
+
+## 10. iPad 适配（iPadOS 18 / iPad 8）
+
+目标设备：**iPad 8（10.2 英寸，A12，2160×1620px）**。
+竖屏约 810×1080pt，横屏约 1080×810pt。
+
+### 10.1 方向与分屏
+
+| 配置 | 值 | 原因 |
+|---|---|---|
+| `UISupportedInterfaceOrientations~ipad` | 四向（含**倒置竖屏**） | iPad 允许任意方向持握 |
+| `UIRequiresFullScreen` | `false` | 允许 Split View / Slide Over；分屏后宽度变化由自适应布局处理 |
+| `TARGETED_DEVICE_FAMILY` | `1,2` | 同时支持 iPhone 与 iPad |
+
+> iPad 8 为 A12，不支持台前调度（Stage Manager），因此不需要额外处理窗口化。
+
+### 10.2 布局切换
+
+| 可用宽度 | 布局 | 说明 |
+|---|---|---|
+| ≥ 900pt | **左右分栏** | 画面 + 数据面板（面板宽 `min(460, 宽度×0.38)`） |
+| < 900pt | **上下堆叠** | 画面占满宽度，数据在下方 |
+
+因此：
+
+- iPad **横屏**（1080pt）→ 分栏
+- iPad **竖屏**（810pt）→ 堆叠，画面更大
+- iPad **分屏一半**（约 500pt）→ 堆叠，与 iPhone 一致
+
+内容区最大宽度 **1280pt** 并居中，避免大屏上被无限拉伸。
+
+### 10.3 字号与间距
+
+| 项 | iPhone | iPad（regular） |
+|---|---|---|
+| 总体状态字号 | 26 | **32** |
+| 双向卡片间距 | 10 | **14** |
+| 页面内边距 | 14 | **20** |
+
+### 10.4 设置页
+
+- 包在 `ScrollView` 里：iPad 软键盘较高，不滚动会挡住"连接"按钮
+- `.scrollDismissesKeyboard(.interactively)`：下滑即可收起键盘
+- 内容最大宽度 520pt，居中，不拉满整屏
+
+### 10.5 验证状态
+
+| 项 | 状态 |
+|---|---|
+| 编译（含 iPad 配置） | ✅ `BUILD SUCCEEDED` |
+| 产物 `UISupportedInterfaceOrientations~ipad` | ✅ 四向 |
+| 产物 `UIRequiresFullScreen` | ✅ `false` |
+| 产物 `UIDeviceFamily` | ✅ `[1, 2]` |
+| **iPad 真机运行** | ❌ **未验证** |
+| 横竖屏切换 | ❌ 未验证 |
+| 分屏 / Slide Over | ❌ 未验证 |
+
+> 以上均为编译期与产物核对，**不代表在 iPad 8 上的实际显示效果**。
