@@ -67,4 +67,3 @@ perception/weights/
 .build/
 
 # Xcode 构建产物
-ios/*/build/
