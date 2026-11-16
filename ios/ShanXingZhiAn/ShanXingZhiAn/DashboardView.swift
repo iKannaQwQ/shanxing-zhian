@@ -206,14 +206,19 @@ struct DashboardView: View {
                         Text(reading.rockCount > 0 ? "发现 \(reading.rockCount) 处障碍" : emptyObstacleText(reading))
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(Theme.tone(reading.overallPassability))
-                        Text("证据 \(reading.evidenceSource) · 可通行区 \(reading.corridorSource)")
+                        Text("证据 \(reading.evidenceSource)")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Text("可通行区 \(reading.corridorSource)")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
                     DataCard(label: "道路", trailing: reading.roadStatus ?? "—") {
                         Text("覆盖 \(reading.coverageText)")
                             .font(.subheadline.weight(.semibold))
-                        Text("处理 \(Int(reading.processingMs)) ms")
+                        Text(reading.processingMs > 0
+                             ? "处理 \(Int(reading.processingMs)) ms"
+                             : "处理耗时未上报")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
@@ -241,7 +246,7 @@ struct DashboardView: View {
                 .font(.caption)
                 .foregroundStyle(.white.opacity(0.85))
             Text(reading.overallPassability.text)
-                .font(.system(size: 32, weight: .bold))
+                .font(.system(size: 26, weight: .bold))
                 .foregroundStyle(.white)
             HStack(spacing: 10) {
                 Text(reading.risk.rawValue)
@@ -255,13 +260,20 @@ struct DashboardView: View {
             .foregroundStyle(.white.opacity(0.95))
 
             if !reading.reasons.isEmpty {
-                Text(reading.reasons.prefix(4).joined(separator: "  "))
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.85))
-                    .lineLimit(2)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(reading.reasons.prefix(6), id: \.self) { code in
+                            Text(code)
+                                .font(.system(size: 9, weight: .medium, design: .monospaced))
+                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(.white.opacity(0.16), in: RoundedRectangle(cornerRadius: 4))
+                                .foregroundStyle(.white.opacity(0.92))
+                        }
+                    }
+                }
             }
         }
-        .padding(14)
+        .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.gradient(reading.risk), in: RoundedRectangle(cornerRadius: 14))
     }

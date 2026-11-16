@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		5A0000000000000000000144 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5A0000000000000000000044 /* Assets.xcassets */; };
 		5B000000000000000000B00 /* ShanXingZhiAnApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B000000000000000000A00 /* ShanXingZhiAnApp.swift */; };
 		5B010000000000000000B00 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B010000000000000000A00 /* RootView.swift */; };
 		5B020000000000000000B00 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B020000000000000000A00 /* DashboardView.swift */; };
@@ -15,10 +16,12 @@
 		5B050000000000000000B00 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B050000000000000000A00 /* APIClient.swift */; };
 		5B060000000000000000B00 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B060000000000000000A00 /* Theme.swift */; };
 		5B070000000000000000B00 /* ServerConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B070000000000000000A00 /* ServerConfig.swift */; };
-		5A0000000000000000000144 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5A0000000000000000000044 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		5A0000000000000000000006 /* ShanXingZhiAn.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ShanXingZhiAn.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5A0000000000000000000044 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		5A0000000000000000000045 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		5B000000000000000000A00 /* ShanXingZhiAnApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShanXingZhiAnApp.swift; sourceTree = "<group>"; };
 		5B010000000000000000A00 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		5B020000000000000000A00 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
@@ -27,9 +30,6 @@
 		5B050000000000000000A00 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		5B060000000000000000A00 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		5B070000000000000000A00 /* ServerConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerConfig.swift; sourceTree = "<group>"; };
-		5A0000000000000000000044 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		5A0000000000000000000045 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		5A0000000000000000000006 /* ShanXingZhiAn.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ShanXingZhiAn.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -209,6 +209,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7PMKFVTFBC;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShanXingZhiAn/Info.plist;
@@ -231,6 +232,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7PMKFVTFBC;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShanXingZhiAn/Info.plist;

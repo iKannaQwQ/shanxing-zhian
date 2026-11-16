@@ -34,7 +34,8 @@ enum Theme {
     }
 
     static let panelBackground = Color(hex: 0x06090D)
-    static let cardBackground = Color(hex: 0x0F172A).opacity(0.04)
+    /// 用系统分组背景色，明暗模式都能看清
+    static let cardBackground = Color(.secondarySystemGroupedBackground)
     static let mono = Font.system(.caption, design: .monospaced)
 }
 
@@ -80,5 +81,9 @@ struct DataCard<Content: View>: View {
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+        )
     }
 }
