@@ -181,3 +181,4 @@ data/          运行时产物（gitignore）
 | [目标域验证](docs/22-target-domain-validation.md) | 972 帧真实数据、尺度换算、策略标定 |
 | [前端](docs/08-frontend.md) | 页面结构、枚举、构建 |
 | [M9 验收](docs/11-m9-checklist.md) | 跨端逐项检查清单 |
+| [iOS 应用](docs/23-ios-app.md) | 「山行智安」网页壳封装、服务地址配置、真机未验证 |

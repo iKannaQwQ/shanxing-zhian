@@ -65,3 +65,6 @@ perception/weights/
 
 # Xcode 派生数据
 .build/
+
+# Xcode 构建产物
+ios/*/build/
