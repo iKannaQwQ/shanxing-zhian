@@ -7,20 +7,28 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		5A0000000000000000000131 /* ShanXingZhiAnApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A0000000000000000000031 /* ShanXingZhiAnApp.swift */; };
-		5A0000000000000000000132 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A0000000000000000000032 /* RootView.swift */; };
-		5A0000000000000000000133 /* WebPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A0000000000000000000033 /* WebPanel.swift */; };
-		5A0000000000000000000134 /* ServerConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A0000000000000000000034 /* ServerConfig.swift */; };
-		5A0000000000000000000135 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5A0000000000000000000035 /* Assets.xcassets */; };
+		5B000000000000000000B00 /* ShanXingZhiAnApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B000000000000000000A00 /* ShanXingZhiAnApp.swift */; };
+		5B010000000000000000B00 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B010000000000000000A00 /* RootView.swift */; };
+		5B020000000000000000B00 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B020000000000000000A00 /* DashboardView.swift */; };
+		5B030000000000000000B00 /* DashboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B030000000000000000A00 /* DashboardViewModel.swift */; };
+		5B040000000000000000B00 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B040000000000000000A00 /* Models.swift */; };
+		5B050000000000000000B00 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B050000000000000000A00 /* APIClient.swift */; };
+		5B060000000000000000B00 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B060000000000000000A00 /* Theme.swift */; };
+		5B070000000000000000B00 /* ServerConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B070000000000000000A00 /* ServerConfig.swift */; };
+		5A0000000000000000000144 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5A0000000000000000000044 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		5A0000000000000000000031 /* ShanXingZhiAnApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShanXingZhiAnApp.swift; sourceTree = "<group>"; };
-		5A0000000000000000000032 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
-		5A0000000000000000000033 /* WebPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebPanel.swift; sourceTree = "<group>"; };
-		5A0000000000000000000034 /* ServerConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerConfig.swift; sourceTree = "<group>"; };
-		5A0000000000000000000035 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		5A0000000000000000000036 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		5B000000000000000000A00 /* ShanXingZhiAnApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShanXingZhiAnApp.swift; sourceTree = "<group>"; };
+		5B010000000000000000A00 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		5B020000000000000000A00 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		5B030000000000000000A00 /* DashboardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardViewModel.swift; sourceTree = "<group>"; };
+		5B040000000000000000A00 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		5B050000000000000000A00 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		5B060000000000000000A00 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		5B070000000000000000A00 /* ServerConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerConfig.swift; sourceTree = "<group>"; };
+		5A0000000000000000000044 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		5A0000000000000000000045 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		5A0000000000000000000006 /* ShanXingZhiAn.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ShanXingZhiAn.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -46,9 +54,16 @@
 		5A0000000000000000000003 /* ShanXingZhiAn */ = {
 			isa = PBXGroup;
 			children = (
-				5A0000000000000000000031, 5A0000000000000000000032, 5A0000000000000000000033, 5A0000000000000000000034,
-				5A0000000000000000000035 /* Assets.xcassets */,
-				5A0000000000000000000036 /* Info.plist */,
+				5B000000000000000000A00 /* ShanXingZhiAnApp.swift */,
+				5B010000000000000000A00 /* RootView.swift */,
+				5B020000000000000000A00 /* DashboardView.swift */,
+				5B030000000000000000A00 /* DashboardViewModel.swift */,
+				5B040000000000000000A00 /* Models.swift */,
+				5B050000000000000000A00 /* APIClient.swift */,
+				5B060000000000000000A00 /* Theme.swift */,
+				5B070000000000000000A00 /* ServerConfig.swift */,
+				5A0000000000000000000044 /* Assets.xcassets */,
+				5A0000000000000000000045 /* Info.plist */,
 			);
 			path = ShanXingZhiAn;
 			sourceTree = "<group>";
@@ -120,7 +135,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5A0000000000000000000135 /* Assets.xcassets in Resources */,
+				5A0000000000000000000144 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -131,7 +146,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5A0000000000000000000131, 5A0000000000000000000132, 5A0000000000000000000133, 5A0000000000000000000134,
+				5B000000000000000000B00 /* ShanXingZhiAnApp.swift in Sources */,
+				5B010000000000000000B00 /* RootView.swift in Sources */,
+				5B020000000000000000B00 /* DashboardView.swift in Sources */,
+				5B030000000000000000B00 /* DashboardViewModel.swift in Sources */,
+				5B040000000000000000B00 /* Models.swift in Sources */,
+				5B050000000000000000B00 /* APIClient.swift in Sources */,
+				5B060000000000000000B00 /* Theme.swift in Sources */,
+				5B070000000000000000B00 /* ServerConfig.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
