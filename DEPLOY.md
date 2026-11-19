@@ -3,6 +3,10 @@
 > 适用：Apple Silicon Mac（M1–M5）。Windows 部署脚本存在但**从未实机验证**。
 > 首次安装需要联网下载 Python/Node 依赖；之后的启动不需要网络。
 
+- **GitHub 仓库**：<https://github.com/iKannaQwQ/shanxing-zhian>
+- **Release 下载**：<https://github.com/iKannaQwQ/shanxing-zhian/releases>
+- 当前版本：**v1.0.1**
+
 ---
 
 ## 0. 两种模式
@@ -30,18 +34,35 @@ demo 使用独立的 `data/demo_sandbox/demo.db`，**不会碰真实数据库**�
 
 ## 2. 首次安装 + demo（一条命令）
 
+### 方式 A：从 GitHub 克隆
+
 ```bash
-git clone <你的仓库地址> shanxing-zhian
+git clone https://github.com/iKannaQwQ/shanxing-zhian.git
 cd shanxing-zhian
 
 bash scripts/quickstart.sh --install --demo
 ```
 
+### 方式 B：从 Release 下载源码包
+
+在 [Releases](https://github.com/iKannaQwQ/shanxing-zhian/releases) 下载
+`shanxing-zhian-*-*.tar.gz`（不含模型权重）：
+
+```bash
+tar -xzf shanxing-zhian-*-*.tar.gz
+cd shanxing-zhian-*
+
+bash scripts/quickstart.sh --install --demo
+```
+
+源码包已包含构建好的 `frontend/dist`，不要求先安装 Node 才能看到页面；
+`quickstart.sh` 仍会检查工具链，缺少时自动 bootstrap。
+
 首次会：
 1. 安装工程内 Node（v24）与 CMake；
 2. 创建 `perception/.venv`（Python 3.11），安装 torch/OpenCV/FastAPI 等；
 3. 编译 C++ 风险引擎（48 项测试）；
-4. 构建 Vue 前端；
+4. 构建（或复用已包含的）Vue 前端；
 5. 生成 10 个场景的合成演示数据；
 6. 在 **8001** 启动演示后端。
 
