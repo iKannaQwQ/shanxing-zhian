@@ -411,9 +411,9 @@ class Database:
         with self._lock:
             frames = self._conn.execute("SELECT COUNT(*) FROM frames").fetchone()[0]
             done = self._conn.execute(
-                "SELECT COUNT(*) FROM frames WHERE status = 'done'").fetchone()[0]
+                "SELECT COUNT(*) FROM frames WHERE status = 'processed'").fetchone()[0]
             failed = self._conn.execute(
-                "SELECT COUNT(*) FROM frames WHERE status = 'failed'").fetchone()[0]
+                "SELECT COUNT(*) FROM frames WHERE status IN ('failed','expired')").fetchone()[0]
             dropped = self._conn.execute(
                 "SELECT COUNT(*) FROM frames WHERE status = 'dropped'").fetchone()[0]
             assessments = self._conn.execute("SELECT COUNT(*) FROM assessments").fetchone()[0]

@@ -101,8 +101,9 @@ web m6.1 · 视口 1440px · API http://172.20.10.4:8000 · WS ws://172.20.10.4:
 
 **已知风险（我无法在代码层排除）**：
 
-1. **画布合成**：实时监控页用 `globalCompositeOperation = 'source-in'` 给掩码着色，
-   Safari 上表现需要实测。
+1. **画布合成**：实时监控页原先用 `globalCompositeOperation = 'source-in'` 给掩码着色，
+   灰度 PNG 的黑底是不透明的，会把整张图染绿。2026-11-18 已改为
+   **按灰度掩码转 alpha** 再着色；仍需在 Safari 上目视确认。
 2. **深度图解析**：`Float32Array` 直接解析二进制，字节序在小端设备上一致，
    但个别浏览器对 `arrayBuffer()` 的兼容性要确认。
 3. **大表格**：Element Plus 在窄屏下的横向滚动条可能被裁切。

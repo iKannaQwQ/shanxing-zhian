@@ -1,6 +1,6 @@
 # 交接说明 · 山区公路落石检测与通行预警系统
 
-> 更新：2026-11-16 20:45　距交付（11/20）4 天　当前 80 次提交
+> 更新：2026-11-18　距交付（11/20）2 天　当前 83 次提交
 > 本文只写**实际核对过**的状态，未验证的一律标注。
 
 ---
@@ -16,7 +16,7 @@
 
 ## 1. 目标与验收
 
-**输入**：iPhone RGB-D 俯视拍摄（沙盘 80×60 cm，道路单车道 4 cm、双向 8 cm）
+**输入**：iPhone RGB-D 俯视拍摄（沙盘 80×60 cm，道路双向 5 cm、单车道约 2.5 cm，2026-11-17 实测）
 **输出**：风险等级 + 双向通行性 + 剩余可通行厘米数 + 证据来源，经 Web/App 展示
 
 完整链路：
@@ -36,11 +36,11 @@ iPhone RGB-D → 道路/可通行区 → 障碍 → 侵入判定 → 剩余宽�
 | 模块 | 状态 | 证据 | 未验证 |
 |---|---|---|---|
 | 契约 | ✅ | 5 Schema，`validate.py` 12/12 | — |
-| C++ 风险引擎 | ✅ | 46/46 测试；支持 `--policy` | 真实道路场景 |
+| C++ 风险引擎 | ✅ | 48/48 测试；支持 `--policy`；多石联合空隙已参与主方向判定 | 真实道路场景 |
 | Python 感知 | ✅ | 99 项测试（含 backend） | 沙盘域 |
 | 道路分割 | 🟡 | AeroScapes expE，test Road IoU **0.7411** | 沙盘/桌面 |
 | RGB-D 几何障碍 | ✅ | 972 帧实采：σ=1.42 mm，≥8 mm 可检出 | 沙盘域 |
-| 风险标定 | ✅ | 单车道 4 cm（`sandbox_4cm_lane.json`） | — |
+| 风险标定 | 🟡 | 单车道 2.5 cm（`sandbox_2p5cm_lane.json`）；0.64 m 下仅约 8 个深度像素，边界待沙盘实测 | 沙盘 |
 | FastAPI 后端 | ✅ | 15 路由，14 测试，推理完全解耦 | 压测 |
 | Web 前端 | ✅ | 监控大屏布局，显示剩余厘米数 | 多浏览器 |
 | iOS App「山行智安」 | 🟡 | SwiftUI 原生，iPhone 真机跑通；模拟器与**真机 SDK** 均编译通过 | iPad 8 上的横竖屏/分屏、实时增量 |
@@ -52,7 +52,7 @@ iPhone RGB-D → 道路/可通行区 → 障碍 → 侵入判定 → 剩余宽�
 road_model      aeroscapes_unet_512_bs8_expE.pt
 obstacle_mode   geometric
 road_source     plane          ← ⚠️ 见 §5
-risk_policy     sandbox_4cm_lane.json
+risk_policy     sandbox_2p5cm_lane.json
 ```
 
 ---
@@ -79,7 +79,7 @@ iPhone (ARKit) ──HTTP──► FastAPI（落盘+入队，不加载模型）
 | 几何障碍 | `perception/src/perception/obstacles/geometry.py` |
 | 侵入判定 | `perception/src/perception/geometry/intrusion.py` |
 | 风险规则 | `risk_engine/src/assessor.cpp` |
-| 策略标定 | `risk_engine/policy/sandbox_4cm_lane.json` |
+| 策略标定 | `risk_engine/policy/sandbox_2p5cm_lane.json` |
 | 数据契约 | `contracts/schemas/perception_report.schema.json` |
 | 后端 | `backend/app/{main,risk,db,config}.py` |
 | Web 页面 | `frontend/src/views/user/HomeView.vue` |
@@ -90,13 +90,15 @@ iPhone (ARKit) ──HTTP──► FastAPI（落盘+入队，不加载模型）
 ## 4. 怎么跑 / 怎么验证
 
 ```bash
-bash scripts/start_all.sh      # 后端 + AI worker
-bash scripts/status.sh         # 看状态
+bash scripts/quickstart.sh --demo   # 合成演示（8001，不需要权重）
+bash scripts/quickstart.sh --full   # 完整系统（8000，需要道路权重）
+bash scripts/start_all.sh           # 完整系统（底层脚本）
+bash scripts/status.sh              # 看状态
 bash scripts/stop_all.sh
 
 # 回归
 perception/.venv/bin/python -m pytest perception/tests backend/tests -q   # 99
-risk_engine/build/rock_risk_tests                                        # 46/46
+risk_engine/build/rock_risk_tests                                        # 48/48
 perception/.venv/bin/python contracts/validate.py --all                  # 12/12
 
 # 不接采集的链路演示（合成深度）
@@ -123,16 +125,16 @@ App 里填这个地址即可。
 | 放弃"落石类别检测" | 公开数据集全是火星/月球或露天矿；无可用许可数据 | `docs/19` |
 | 改用 RGB-D 几何异常 | 零标注；σ=1.42 mm，8 mm 即 5.6σ；CPU 37–43 ms | `docs/20` `docs/22` |
 | 保留"落石"字样但语义泛化 | `rockfalls[]` 17 字段中只有 `label` 与类别有关 | `docs/20 §2` |
-| 单车道 4 cm 作为通行阈值 | 沙盘不放小车，用"一车道"代替车宽 | `docs/22 §9` |
+| 单车道 2.5 cm 作为通行阈值 | 沙盘不放小车，用"一车道"代替车宽（双向 5 cm，2026-11-17 实测更正） | `docs/22 §9` |
 | iOS 用原生 SwiftUI | 第一版是 WKWebView 壳，可控性不足；用户要求重写 | `docs/23` |
 | `snapshot` 不算实时 | 网页端早期踩过：历史数据被当成实时，显示"刚刚" | `docs/23 §3` |
 
 ---
 
-## 6. 十个坑（按踩到的频率）
+## 6. 十二个坑（按踩到的频率）
 
 1. **`ROAD_ROAD_SOURCE=plane` 只适用于固定俯视**。它把整片平整地面当可通行区；
-   沙盘里道路 4 cm、两侧桌面也平，会判成"整张桌子都能开"。**沙盘到位后必须换 `road_model`。**
+   沙盘里道路 5 cm、两侧地面也平，会判成"整张沙盘都能开"。**沙盘到位后必须换 `road_model`。**
 2. **采集帧只保留 0.5 小时**（`ROAD_ARTIFACT_HOURS`）。972 帧验证数据已被清理，仅剩 14 帧。
    **重要采集先备份**，否则 `docs/22` 的结论无法复现。
 3. **契约 `model` 块 `additionalProperties: false`**：多加字段会被 422 拒绝；
@@ -144,17 +146,25 @@ App 里填这个地址即可。
 8. **贴边物体被抑制**（边框 2 px）：画面边缘的真实物体可能不报。
 9. **Swift 编译器在 `if let x`（与属性同名）处断言崩溃**，不是语法错误，改个绑定名即可。
 10. **`data/aeroscapes` 829 MB**（原始 789 MB），已被 gitignore，换机器要重新准备。
+11. **2.5 cm 的阈值在 0.64 m 处只有约 8 个深度像素**（1 px ≈ 3.1 mm）。
+    剩余宽度的边界不确定度约 ±3–6 mm，**演示不要卡 2.5 cm**：
+    用 3 cm 可通过、2 cm 阻断这种明确案例；需要更细时把机位降到 0.50–0.55 m。
+12. **监控页不能用 `source-in` 给灰度掩码上色**：PNG 的黑底也是不透明的，
+    `source-in` 会把整张 RGB 染绿，看起来像"整片平面都是道路"。
+    2026-11-18 已改为按掩码灰度转 alpha；改前端后要重新 `npm run build` 并硬刷新。
 
 ---
 
-## 7. 未完成与优先级（4 天）
+## 7. 未完成与优先级（2 天）
 
 | P | 事项 | 说明 | 阻塞 |
 |---|---|---|---|
 | ✅ | iPad 8 真机布局 | 已在设备上运行，用户目测合适（2026-11-16） | — |
+| ✅ | 汇报演示数据（合成） | 10 场景 + 总览/链路图 + 独立 `demo.db`；见 `docs/24`，输入标 SIMULATED | — |
+| ✅ | 交付打包 | `scripts/quickstart.sh`、`scripts/package_release.sh`、`DEPLOY.md`；源码包不含权重 | — |
 | **P1** | 实时增量：App 端接收 | 服务端推送已验证；App 端需前台时推一帧确认 | 无 |
 | **P0** | 沙盘采集 → 道路模型微调 | 卡在沙盘本身；`docs/21` 有拍摄规范 | **需沙盘** |
-| P1 | 答辩材料 / 演示脚本 | 可用 `demo_geometric_obstacle.py` | — |
+| P1 | 答辩材料 / 演示脚本 | 已有合成演示数据；真实沙盘到位后替换 | — |
 | P2 | 双向 `SHARED_CORRIDOR` 改造 | A→B 与 B→A 恒相同；方案见 `docs/18 §C.2` | — |
 | P3 | Windows 部署 | 用户已明确暂缓 | 需机器 |
 

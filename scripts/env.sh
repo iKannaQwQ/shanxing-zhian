@@ -21,7 +21,7 @@ echo "node  : $(command -v node || echo '缺失')"
 echo "cmake : $(command -v cmake || echo '缺失')"
 
 # 可通行区来源：plane = 深度平面内点（固定俯视的桌面/沙盘演示）
-#                road_model = U-Net 道路分割（真实道路，或沙盘里需要区分 4 cm 道路时）
+#                road_model = U-Net 道路分割（真实道路，或沙盘里需要区分 5 cm 道路时）
 : "${ROAD_ROAD_SOURCE:=plane}"
 export ROAD_ROAD_SOURCE
 # 障碍来源：geometric = RGB-D 几何（不需要检测模型）

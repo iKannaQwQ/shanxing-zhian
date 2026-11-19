@@ -222,6 +222,40 @@ RoadStatus RiskAssessor::assess(const PerceptionInput& input, int64_t now_ms) co
     if (rock_risk == RiskLevel::kSafe) rock_risk = RiskLevel::kLow;
   }
 
+  // ---- 6.5 多石联合：单块都还够宽，合起来可能已经堵死 ----
+  // 感知侧给出 combined_remaining_width_px（道路掩码里所有障碍接地区域求并集后的
+  // 最宽连续空隙）。用任一有效落石的 米/像素 比例换算成米；若联合空隙小于
+  // 最小可通行宽度，主方向也必须升级为 HIGH，而不是只看单块。
+  std::optional<double> m_per_px;
+  for (const auto& r : valid) {
+    if (r.remaining_width_px.has_value() && *r.remaining_width_px > 1e-6 &&
+        r.remaining_width_m.has_value()) {
+      m_per_px = *r.remaining_width_m / *r.remaining_width_px;
+      break;
+    }
+  }
+  std::optional<double> combined_gap_m;
+  if (input.combined_remaining_width_px.has_value() && m_per_px.has_value()) {
+    combined_gap_m = *input.combined_remaining_width_px * *m_per_px;
+    // 联合空隙是"所有障碍接地区域求并集后最宽的连续通道"，
+    // 比单块各自的剩余宽度更接近真实可通行宽度，直接参与最小间隙。
+    if (!min_gap_m.has_value() || *combined_gap_m < *min_gap_m) {
+      min_gap_m = combined_gap_m;
+    }
+  }
+  const bool combined_narrow =
+      combined_gap_m.has_value() && *combined_gap_m < policy_.min_pass_width_m;
+  // 只有"多块"才用联合阻断的措辞；单块的窄间隙已经由 classify_rock 判 HIGH。
+  if (valid.size() >= 2 && (input.combined_blocked || combined_narrow)) {
+    rock_reasons.push_back(mk("MULTI_ROCK_JOINT_BLOCK",
+                              "多块落石联合后剩余间隙不足，主方向判为阻断"));
+    rock_risk = worse_of(rock_risk, RiskLevel::kHigh);
+    if (!combined_gap_m.has_value() && input.combined_blocked &&
+        !min_gap_m.has_value()) {
+      min_gap_m = 0.0;
+    }
+  }
+
   // ---- 7. 质量门控：只有证据充分才允许 SAFE ----
   const bool quality_ok = depth_ok && input.status == PerceptionStatus::kOk;
   RiskLevel final_risk = rock_risk;
@@ -298,7 +332,7 @@ RoadStatus RiskAssessor::assess(const PerceptionInput& input, int64_t now_ms) co
     }
 
     if (input.combined_blocked) {
-      ap.reasons.push_back(mk("ALTERNATIVE_BLOCKED", "多块落石联合阻断，无可通行间隙"));
+      ap.reasons.push_back(mk("ALTERNATIVE_BLOCKED", "落石阻断，无可通行间隙"));
       definitive_unavailable = true;
     } else if (depth_ok && min_gap_m.has_value() &&
                *min_gap_m < policy_.min_pass_width_m + policy_.alternative_margin_m) {

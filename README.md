@@ -9,6 +9,16 @@
 
 ## 怎么跑
 
+**新机器/首次部署**：见 **[DEPLOY.md](DEPLOY.md)**。已装好环境的机器：
+
+```bash
+bash scripts/quickstart.sh --demo     # 合成演示，8001，不需要模型权重
+bash scripts/quickstart.sh --full     # 完整系统，8000，需要道路权重
+# 首次：在前面加 --install
+```
+
+---
+
 **双击即可**（项目根目录）：
 
 | 文件 | 作用 |
@@ -55,16 +65,20 @@ Web 页面：风险等级 + 双向通行性 + 剩余厘米数 + 证据来源
 | 模块 | 状态 | 说明 |
 |---|---|---|
 | 契约与校验 | ✅ | 5 个 JSON Schema + 语义不变量，12/12 通过 |
-| C++ 风险引擎 | ✅ | 46 项测试；fail-closed；支持 `--policy` 外部标定 |
+| C++ 风险引擎 | ✅ | 48 项测试；fail-closed；支持 `--policy` 外部标定 |
 | iOS 采集端 | ✅ | M1–M7；真机 1086 帧零丢失；热自适应降级；朝向自动转正 |
 | 道路分割 | 🟡 | AeroScapes expE，test Road IoU **0.7411**；**未在沙盘验证** |
 | RGB-D 几何障碍 | ✅ | 真实数据验证：σ=1.42 mm，可检出 ≥8 mm 凸起，37–43 ms/帧 |
-| 风险标定 | ✅ | 沙盘尺度：单车道 4 cm / 双向 8 cm，见 `docs/22 §9` |
+| 风险标定 | 🟡 | 沙盘尺度：双向 5 cm / 单车道 2.5 cm（2026-11-17 更正），见 `docs/22 §9` |
 | 前端 | 🟡 | 已显示剩余厘米数与证据来源；**未做多浏览器/真机验收** |
 | Windows 部署 | ❌ | 脚本已写，**从未在 Windows 上执行** |
 | 沙盘目标域 | ❌ | **尚无沙盘数据**；桌面数据已用于方法验证 |
 
-测试总览：Python **99** 项 · C++ **46/46** · 契约 **12/12**。
+测试总览：Python **99** 项 · C++ **48/48** · 契约 **12/12**。
+
+> 汇报材料：`data/demo_sandbox/` 有一套**合成沙盘演示数据**（10 场景、总览图、
+> 链路图、独立 Web 演示库），输入明确标注 `SIMULATED`。生成方式与限制见
+> [docs/24](docs/24-demo-data.md)。它不是真实沙盘验证。
 
 ### 五组道路分割实验（独立测试集 241 张）
 
@@ -146,11 +160,12 @@ data/          运行时产物（gitignore）
    LiDAR 光斑大于颗粒，信号被平均进桌面。见 `docs/22 §3.1`。
 2. **只认"凸起"，不认"平躺"**：薄片、贴地石块、透明物体不会触发。
 3. **`road_source=plane` 只适用于固定俯视**：它把整片平整地面当可通行区，
-   真实道路上会把人行道、路肩也算进去。沙盘里若需区分 4 cm 道路，必须用 `road_model`。
+   真实道路上会把人行道、路肩也算进去。沙盘里若需区分 5 cm 道路，必须用 `road_model`。
 4. **道路分割未在沙盘验证**：0.7411 是 AeroScapes 航拍测试集成绩，
    不能外推到桌面/沙盘域。
 5. **没有语义分类**：系统不会告诉你"这是落石还是纸箱"，只说"这里有东西高出地面"。
-6. **风险阈值按沙盘标定**（单车道 4 cm），换场景需改 `risk_engine/policy/*.json`。
+6. **风险阈值按沙盘标定**（单车道 2.5 cm，双向 5 cm），换场景需改 `risk_engine/policy/*.json`。
+   0.64 m 下 2.5 cm 仅约 8 个深度像素，边界判定有 ±3–6 mm 不确定度。
 7. **Windows 部署未验证**；`build_risk_engine.ps1` 与 PowerShell 步骤均未实机执行。
 8. **前端未做多浏览器/真机确认**，清单见 [M9 验收](docs/11-m9-checklist.md)。
 9. `contracts/samples/` 中标 `source: SIMULATED` 的均为**构造样例**，不是模型输出。
@@ -181,6 +196,8 @@ data/          运行时产物（gitignore）
 | [技术路线重估](docs/20-obstacle-route-evaluation.md) | 从识别落石转向可通行空间；方案对比 |
 | [目标域采集](docs/21-target-domain-capture.md) | 俯视拍摄规范、场景清单、最小可接受版本 |
 | [目标域验证](docs/22-target-domain-validation.md) | 972 帧真实数据、尺度换算、策略标定 |
+| [iOS 监控端](docs/23-ios-app.md) | 山行智安：SwiftUI、iPad 适配、WebSocket |
+| [汇报演示数据](docs/24-demo-data.md) | 合成沙盘、10 场景、Web 演示库、已知盲区 |
 | [前端](docs/08-frontend.md) | 页面结构、枚举、构建 |
 | [M9 验收](docs/11-m9-checklist.md) | 跨端逐项检查清单 |
 | [iOS 应用](docs/23-ios-app.md) | 「山行智安」SwiftUI 原生客户端、WS+轮询、iPad 适配 |

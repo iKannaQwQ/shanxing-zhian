@@ -11,7 +11,7 @@ BASE="http://127.0.0.1:$PORT"
 
 # 可通行区 / 障碍来源（与 scripts/env.sh 保持一致，说明见 docs/22 §9）
 # plane = 深度平面内点（固定俯视的桌面/沙盘演示）
-# road_model = U-Net 道路分割（真实道路，或沙盘里需要区分 4 cm 道路时）
+# road_model = U-Net 道路分割（真实道路，或沙盘里需要区分 5 cm 道路时）
 : "${ROAD_ROAD_SOURCE:=plane}"
 : "${ROAD_OBSTACLE_MODE:=geometric}"
 export ROAD_ROAD_SOURCE ROAD_OBSTACLE_MODE

@@ -138,16 +138,24 @@ function composeRGB() {
   ctx.drawImage(rgbImage, 0, 0)
 
   if (showMask.value && maskImage) {
-    // 掩码着色：先画成绿色，再用 source-in 保留形状
+    // 灰度掩码 -> 绿色 alpha 图层。
+    // 不能直接用 source-in：mask PNG 的黑底是不透明的，会把整张图染绿。
     const tint = document.createElement('canvas')
     tint.width = canvas.width
     tint.height = canvas.height
     const tintCtx = tint.getContext('2d')
     if (tintCtx) {
       tintCtx.drawImage(maskImage, 0, 0, canvas.width, canvas.height)
-      tintCtx.globalCompositeOperation = 'source-in'
-      tintCtx.fillStyle = '#22c55e'
-      tintCtx.fillRect(0, 0, canvas.width, canvas.height)
+      const image = tintCtx.getImageData(0, 0, canvas.width, canvas.height)
+      const data = image.data
+      for (let i = 0; i < data.length; i += 4) {
+        const alpha = data[i] > 127 ? 255 : 0  // 灰度掩码（0/255 或 0/1 都兼容）
+        data[i] = 34           // #22c55e
+        data[i + 1] = 197
+        data[i + 2] = 94
+        data[i + 3] = alpha
+      }
+      tintCtx.putImageData(image, 0, 0)
       ctx.globalAlpha = 0.32
       ctx.drawImage(tint, 0, 0)
       ctx.globalAlpha = 1

@@ -1,5 +1,5 @@
 {
-  "_comment": "沙盘标定策略：双向道路总宽 8 cm，单车道 4 cm；沙盘不放小车，因此 vehicle_width_m 表示【单车道宽度】而非车宽。剩余宽度 < 4 cm 视为该方向不可通行。",
+  "_comment": "【历史策略，已被 sandbox_2p5cm_lane.json 取代】沙盘标定策略：双向道路总宽 8 cm，单车道 4 cm；沙盘不放小车，因此 vehicle_width_m 表示【单车道宽度】而非车宽。剩余宽度 < 4 cm 视为该方向不可通行。",
   "vehicle_width_m": 0.040,
   "safety_margin_m": 0.0,
   "min_pass_width_m": 0.040,

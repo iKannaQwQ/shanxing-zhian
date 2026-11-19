@@ -1,0 +1,15 @@
+{
+  "_comment": "沙盘标定策略（2026-11-17 实测更正）：双向道路总宽 5 cm，单向车道约 2.5 cm；沙盘不放小车，因此 vehicle_width_m 表示【单车道宽度】而非车宽。剩余宽度 < 2.5 cm 视为该方向不可通行。注意：0.64 m 处 1 个深度像素约 3.1 mm，2.5 cm 仅约 8 个深度像素，边界判定有约 ±3–6 mm 的量化不确定度；演示时请用明确的 3 cm 可通过 / 2 cm 阻断案例，不要卡在 2.5 cm 上。",
+  "vehicle_width_m": 0.025,
+  "safety_margin_m": 0.0,
+  "min_pass_width_m": 0.025,
+  "min_rock_confidence": 0.35,
+  "min_road_coverage": 0.02,
+  "max_frame_age_ms": 2000,
+  "edge_overlap_max": 0.15,
+  "full_overlap_min": 0.85,
+  "required_lookahead_m": 0.15,
+  "alternative_margin_m": 0.003,
+  "allow_alternative": true,
+  "policy_version": 3
+}

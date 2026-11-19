@@ -11,7 +11,7 @@
 |---|---|
 | 语言 / 标准 | C++17 |
 | 依赖 | 仅 nlohmann/json（单头文件，已 vendored） |
-| 单元测试 | **46 项全部通过** |
+| 单元测试 | **48 项全部通过** |
 | 构建 | macOS/AppleClang 21 通过；**Windows 脚本已写但未实测** |
 | 契约样例 | `contracts/samples/road_status/sample_blocked.json` 通过 8 条不变量 |
 
@@ -98,6 +98,14 @@ perception (Python)  --perception_report.json-->  risk_engine (C++)  -->  road_s
 
 严重度排序：`SAFE < LOW < MEDIUM < HIGH < UNKNOWN`。
 **`UNKNOWN` 被排在最后（最不利）**，因为它意味着"无法排除危险"。
+
+**多石联合（2026-11-18 新增）**：感知侧给出 `metrics.combined_remaining_width_px`
+（所有障碍接地区域求并集后的最宽连续空隙）。引擎用任一有效落石的"米/像素"比例
+换算成米；若联合空隙小于 `min_pass_width_m`，或 `combined_blocked=true`，
+**主方向也升级为 `HIGH`**，并在方向理由里写入 `MULTI_ROCK_JOINT_BLOCK`。
+联合空隙即使大于阈值，也会作为方向的 `remaining_width_m`（取与单块的最小值），
+不再只报告单块各自的剩余宽度。这修复了"两块石各自都剩 3 cm、合起来只剩 2 cm
+却判 RESTRICTED"的问题。
 
 ---
 
@@ -195,7 +203,7 @@ risk_engine/
 │   └── json_io.hpp    解析 / 序列化
 ├── src/{types,policy,assessor,json_io}.cpp
 ├── cli/main.cpp       命令行：文件或 stdin -> stdout
-├── tests/             46 项单元测试（自带极简框架，零外部依赖）
+├── tests/             48 项单元测试（自带极简框架，零外部依赖）
 └── third_party/nlohmann/json.hpp
 ```
 
@@ -259,11 +267,11 @@ risk_engine/build/rock_risk_cli --input frame.json --policy policy.json --compac
 
 ## 11. 测试覆盖
 
-46 项，覆盖：
+48 项，覆盖：
 
 - 单石分级（NONE/EDGE/PARTIAL/FULL/UNKNOWN，含"PARTIAL 但过窄升级为 HIGH"）
 - 质量门控（无道路、无深度、过期、链路异常、低置信度过滤）
-- 多石取最不利
+- 多石取最不利；多石联合空隙低于阈值时主方向升级 HIGH，高于阈值时仍作为方向剩余宽度
 - 替代通行四态及判定顺序（含"确定不可用优先于无法确认"）
 - JSON 往返、缺字段、坏 JSON、未知枚举
 - 错误输出仍然结构合法

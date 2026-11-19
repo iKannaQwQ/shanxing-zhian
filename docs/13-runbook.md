@@ -35,7 +35,7 @@ perception/.venv/bin/python scripts/check_env.py
 bash scripts/build_risk_engine.sh
 ```
 
-**应看到**：`rock_risk_cli` 生成，测试 `46/46 用例通过`。
+**应看到**：`rock_risk_cli` 生成，测试 `48/48 用例通过`。
 
 > 这一步 `start_all.sh` 会自动检查，没编译会自动补。
 

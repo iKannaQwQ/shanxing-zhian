@@ -54,6 +54,38 @@ bool load_policy(const std::string& path, rock_risk::Policy& policy, std::string
       return false;
     }
   }
+
+  // 非数值项：policy_version 用于输出溯源，allow_alternative 是安全开关。
+  auto value_of = [&](const char* key, std::string& out) -> bool {
+    const std::string needle = std::string("\"") + key + "\"";
+    auto pos = text.find(needle);
+    if (pos == std::string::npos) return false;
+    pos = text.find(':', pos);
+    if (pos == std::string::npos) return false;
+    auto end = text.find_first_of(",}\n", pos + 1);
+    out = text.substr(pos + 1, end - pos - 1);
+    return true;
+  };
+
+  std::string value;
+  if (value_of("policy_version", value)) {
+    try {
+      policy.policy_version = std::stoi(value);
+    } catch (...) {
+      err = "无法解析策略项: policy_version";
+      return false;
+    }
+  }
+  if (value_of("allow_alternative", value)) {
+    if (value.find("true") != std::string::npos) {
+      policy.allow_alternative = true;
+    } else if (value.find("false") != std::string::npos) {
+      policy.allow_alternative = false;
+    } else {
+      err = "无法解析策略项: allow_alternative";
+      return false;
+    }
+  }
   return true;
 }
 

@@ -30,7 +30,7 @@ DEFAULT_MIN_AREA_PX = 12
 DEFAULT_MIN_VALID_RATIO = 0.30
 #: 忽略画面边框这么多像素内的连通域。
 #: 实测深度传感器在边缘有系统偏差，不加抑制会误报（见 docs/22）。
-#: 用 2 而非 6：沙盘道路只有 4 cm 宽 = 20 个深度像素，6 px 会吃掉两侧各 30%
+#: 用 2 而非 6：沙盘道路只有 5 cm 宽 = 16 个深度像素（0.64 m），6 px 会吃掉两侧各 37%
 DEFAULT_BORDER_MARGIN_PX = 2
 
 

@@ -227,6 +227,56 @@ TEST(multiple_rocks_take_worst) {
   CHECK(st.directions[0].limiting_rock_ids[0] == "R2");
 }
 
+TEST(combined_gap_below_min_is_high) {
+  // 沙盘策略：单车道 2.5 cm。两块各剩 3 cm（单看都是 MEDIUM），
+  // 但联合空隙只有 2 cm，主方向必须升级为 HIGH/BLOCKED。
+  Policy p;
+  p.vehicle_width_m = 0.025;
+  p.safety_margin_m = 0.0;
+  p.recompute();
+  RiskAssessor a(p);
+  auto in = base_input();
+  auto r1 = rock("R1", Intrusion::kPartial, 0.9, 0.03);
+  r1.remaining_width_px = 30.0;
+  auto r2 = rock("R2", Intrusion::kPartial, 0.9, 0.03);
+  r2.remaining_width_px = 30.0;
+  in.rocks = {r1, r2};
+  in.combined_remaining_width_px = 20.0;  // 20 px * (0.03/30) = 0.02 m
+  auto st = a.assess(in, kNowMs);
+  CHECK(st.overall_risk == RiskLevel::kHigh);
+  CHECK(st.directions[0].passability == Passability::kBlocked);
+  CHECK(st.directions[1].passability == Passability::kBlocked);
+  CHECK(st.directions[0].remaining_width_m.has_value());
+  CHECK(*st.directions[0].remaining_width_m < 0.025);
+  bool found = false;
+  for (const auto& r : st.directions[0].reasons) {
+    found = found || r.code == "MULTI_ROCK_JOINT_BLOCK";
+  }
+  CHECK(found);
+}
+
+TEST(combined_gap_above_min_is_reported) {
+  // 联合空隙大于阈值时仍应作为方向剩余宽度，而不是沿用单块的更大值。
+  Policy p;
+  p.vehicle_width_m = 0.025;
+  p.safety_margin_m = 0.0;
+  p.recompute();
+  RiskAssessor a(p);
+  auto in = base_input();
+  auto r1 = rock("R1", Intrusion::kPartial, 0.9, 0.04);
+  r1.remaining_width_px = 40.0;
+  auto r2 = rock("R2", Intrusion::kPartial, 0.9, 0.04);
+  r2.remaining_width_px = 40.0;
+  in.rocks = {r1, r2};
+  in.combined_remaining_width_px = 30.0;  // 30 px * (0.04/40) = 0.03 m
+  auto st = a.assess(in, kNowMs);
+  CHECK(st.overall_risk == RiskLevel::kMedium);
+  CHECK(st.directions[0].passability == Passability::kRestricted);
+  CHECK(st.directions[0].remaining_width_m.has_value());
+  CHECK(*st.directions[0].remaining_width_m > 0.029);
+  CHECK(*st.directions[0].remaining_width_m < 0.031);
+}
+
 TEST(low_confidence_rock_never_safe) {
   RiskAssessor a(policy());
   auto in = base_input();
